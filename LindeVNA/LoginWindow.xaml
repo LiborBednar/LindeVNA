@@ -1,0 +1,50 @@
+﻿<Window x:Name="LoginWindow1" x:Class="LindeVNA.LoginWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:LindeVNA"
+        mc:Ignorable="d"
+        Title="LoginWindow" Height="800" Width="600" MinHeight="640" MinWidth="420"
+        WindowStartupLocation="CenterScreen" Closed="LoginWindow1_Closed">
+    <Grid Margin="10">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="600"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="400"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+        <Grid Grid.Column="1" Grid.Row="1">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="2*"/>
+                <ColumnDefinition Width="3*"/>
+            </Grid.ColumnDefinitions>
+            <Label x:Name="pripojeniLabel" Content="Připojení" HorizontalAlignment="Right" Margin="0,0,10,0" Grid.Row="1" VerticalAlignment="Center" FontSize="18"/>
+            <Label x:Name="loginLabel" Content="Login" HorizontalAlignment="Right" Margin="0,0,10,0" Grid.Row="3" VerticalAlignment="Center" FontSize="16"/>
+            <Label x:Name="hesloLabel" Content="Helso" HorizontalAlignment="Right" Margin="0,0,10,0" Grid.Row="4" VerticalAlignment="Center" FontSize="16"/>
+            <Label x:Name="profilLabel" Content="Profil" HorizontalAlignment="Right" Margin="0,0,10,0" Grid.Row="5" VerticalAlignment="Center" FontSize="16"/>
+            <Label x:Name="jazykLabel" Content="Jazyk" HorizontalAlignment="Right" Margin="0,0,10,0" Grid.Row="6" VerticalAlignment="Center" FontSize="16"/>
+            <Label x:Name="urlLabel" Content="http://192.168.23.5/Helios4624" HorizontalAlignment="Center" Grid.Row="2" Grid.ColumnSpan="2" VerticalAlignment="Center" MouseDoubleClick="urlLabel_MouseDoubleClick"/>
+            <ComboBox x:Name="prihlasenComboBox" Grid.Column="1" Grid.Row="1" VerticalAlignment="Center" HorizontalContentAlignment="Left" Margin="0,0,20,0" FontSize="18"/>
+            <ComboBox x:Name="profilComboBox" Grid.Column="1" Grid.Row="5" VerticalAlignment="Center" HorizontalContentAlignment="Left" Margin="0,0,20,0" FontSize="16"/>
+            <ComboBox x:Name="jazykComboBox" Grid.Column="1" Grid.Row="6" VerticalAlignment="Center" HorizontalContentAlignment="Left" Margin="0,0,20,0" FontSize="16"/>
+            <TextBox x:Name="loginTextBox" Grid.Column="1" Grid.Row="3" TextWrapping="Wrap" Text="LCS" VerticalAlignment="Center" HorizontalContentAlignment="Left" Margin="0,0,20,0" FontSize="16"/>
+            <TextBox x:Name="hesloTextBox" Grid.Column="1" Grid.Row="4" TextWrapping="Wrap" Text="" VerticalAlignment="Center" HorizontalContentAlignment="Left" Margin="0,0,20,0" FontSize="16"/>
+            <Button x:Name="prihlasitButton" Content="Přihlásit" HorizontalAlignment="Center" Grid.Row="7" VerticalAlignment="Center" Grid.ColumnSpan="2" FontSize="16" Padding="10,5,10,5" Click="PrihlasitButton_Click"/>
+        </Grid>
+    </Grid>
+</Window>
