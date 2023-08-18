@@ -91,9 +91,20 @@ namespace LindeVNA
 
             if (Globals.SgConnector != null && Globals.SgConnector.LoggedOn)
             {
-                TerminalVNA terminal = new TerminalVNA();
-                this.Hide();
-                terminal.ShowDialog();
+                TerminalVNA terminal = null;
+                try
+                {
+                    terminal = new TerminalVNA();
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show(ex.Message);
+                }
+                if (terminal != null)
+                {
+                    this.Hide();
+                    terminal.ShowDialog();
+                }
             }
         }
 
