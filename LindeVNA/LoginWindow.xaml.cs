@@ -15,6 +15,7 @@ using System.Windows.Shapes;
 
 using Noris.WS.ServiceGate;
 using Noris.Clients.ServiceGate;
+using NLog;
 
 
 namespace LindeVNA
@@ -26,7 +27,24 @@ namespace LindeVNA
     {
         public LoginWindow()
         {
+            Globals.Logger = LogManager.GetLogger("file");
+
+
+            Globals.Logger.Info("Program started");
             InitializeComponent();
+            AppDomain currentDomain = AppDomain.CurrentDomain;
+            currentDomain.UnhandledException += CurrentDomain_UnhandledException;
+        }
+
+        private void CurrentDomain_UnhandledException(object sender, UnhandledExceptionEventArgs e)
+        {
+            Globals.Logger.Error("Neoštřená výjimka.");
+            Exception ex = e.ExceptionObject as Exception;
+            if (ex != null)
+            {
+                Globals.Logger.Error(ex);
+                Globals.Logger.Trace(ex.ToString());
+            }
         }
 
         private void urlLabel_MouseDoubleClick(object sender, MouseButtonEventArgs e)

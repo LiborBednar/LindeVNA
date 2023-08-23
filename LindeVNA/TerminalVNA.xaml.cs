@@ -2,9 +2,11 @@
 using System.Collections.Generic;
 using System.Configuration;
 using System.Linq;
+using System.Text.RegularExpressions;
+using System.Data;
+using System.Threading;
 using System.Text;
 using System.IO.Ports;
-using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -14,6 +16,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
+using System.Windows.Threading;
 
 using Noris.WS.ServiceGate;
 using Noris.Clients.ServiceGate;
@@ -25,6 +28,8 @@ namespace LindeVNA
     /// </summary>
     public partial class TerminalVNA : Window
     {
+        DispatcherTimer _Timer;
+
         private SerialPort _SerialPort;
         private String _DataBuffer = "";
 
@@ -232,7 +237,77 @@ namespace LindeVNA
             }
         }
 
+        private bool _OrderConfirmed;
+        public bool OrderConfirmed
+        {
+            set
+            {
+                _OrderConfirmed = value;
+            }
+            get
+            {
+                return _OrderConfirmed;
+            }
+        }
 
+
+        private bool _StatusConfirmed;
+        public bool StatusConfirmed
+        {
+            set
+            {
+                _StatusConfirmed = value;
+            }
+            get
+            {
+                return _StatusConfirmed;
+            }
+        }
+
+
+        private string _AktualniPozice = "";
+        public string AktualniPozice
+        {
+            get
+            {
+                return _AktualniPozice;
+            }
+            set
+            {
+                if (_AktualniPozice != value)
+                {
+                    RunFunctionRequest request = new RunFunctionRequest();
+                    request.Function.FunctionId = 23480; //  VNA client request
+                    request.UserData = new FunctionUserData();
+
+                    InputTable inputTable = new InputTable("InputParams");
+                    inputTable.AddColumn("command_key", typeof(string));
+                    inputTable.AddColumn("vozik", typeof(int));
+                    inputTable.AddColumn("aktualni_pozice", typeof(string));
+                    int row = inputTable.AddRow();
+                    inputTable.SetItem(0, "command_key", "zmena_aktualni_pozice");
+                    inputTable.SetItem(0, "vozik", HeliosVNA);
+                    inputTable.SetItem(0, "aktualni_pozice", value);
+                    List<InputTable> inputTables = new List<InputTable>();
+                    inputTables.Add(inputTable);
+                    request.UserData.SetDatastores<InputTable>(inputTables);
+
+                    try
+                    {
+                        RunFunctionResponse response = request.Process(Globals.SgConnector);
+                        Srv.ResponseStateFailure(response);
+                    }
+                    catch (Exception ex)
+                    {
+                        //MessageBox.Show("Nepodařilo se zjistit spárování vozíku v Heliosu: " + ex.Message);
+                    }
+
+                }
+                _AktualniPozice = value;
+            }
+        }
+
+        public int UkolVNA { get; set; } = 0;
 
         private void _ResetStatus()
         {
@@ -241,6 +316,7 @@ namespace LindeVNA
             CurrentPosition = null;
             NominalPosition = null;
             Status = null;
+            AktualniPozice = "";
         }
 
         public TerminalVNA()
@@ -263,6 +339,54 @@ namespace LindeVNA
             lblComPorts.Visibility = Visibility.Hidden;
             cbxComPorts.Visibility = Visibility.Hidden;
             BtnConnect.Visibility = Visibility.Hidden;
+            lblStavUkolu.Content = "Inicializace";
+
+        }
+
+        private void _Timer_Tick(object sender, EventArgs e)
+        {
+            _NactiUkol();
+        }
+
+        private void _NactiUkol()
+        {
+            if (HeliosVNA == 0)
+            {
+                lblStavUkolu.Content = "Nespárováno Helios";
+                lblStavUkolu.Foreground = Brushes.Red;
+            }
+            else if (String.IsNullOrEmpty(AktualniPozice))
+            {
+                lblStavUkolu.Content = "Neznámá pozice";
+                lblStavUkolu.Foreground = Brushes.Red;
+            }
+            else if (UkolVNA == 0)
+            {
+                BrowseRequest request = new BrowseRequest(22567, new BrowseId(BrowseType.Template, 22645));
+                request.Bounds.LowerBound = 1;
+                request.Bounds.UpperBound = 1;
+                request.BaseFilterArguments = new FilterArgumentList();
+                request.BaseFilterArguments.Add("aktualni_pozice", AktualniPozice);
+                request.BaseFilterArguments.Add("vna_vozik", HeliosVNA);
+                BrowseResponse response = request.Process(Globals.SgConnector);
+                DataTable table = response.Data.MainTable;
+
+                if (table.Rows.Count == 0)
+                {
+                    lblStavUkolu.Content = "Seznam úkolů je prázdný";
+                    lblStavUkolu.Foreground = Brushes.Red;
+                }
+                else
+                {
+                    lblStavUkolu.Content = table.Rows[0]["typ_operace_vna"].ToString() + ": " + table.Rows[0]["stav_ukolu_vna"].ToString();
+                    lblAktualniPoziceVal.Content = AktualniPozice;
+                    lblOdkudVal.Content = table.Rows[0]["odkud"].ToString();
+                    lblKamVal.Content = table.Rows[0]["kam"].ToString();
+                    lblPrioritaVal.Content = table.Rows[0]["priorita"].ToString();
+
+                    lblStavUkolu.Foreground = Brushes.Green;
+                }
+            }
         }
 
         protected override void OnContentRendered(EventArgs e)
@@ -277,6 +401,10 @@ namespace LindeVNA
                 _KontrolaSparovani(HeliosVNA, SynchroID);
             }
             _ResetStatus();
+            _Timer = new DispatcherTimer();
+            _Timer.Interval = TimeSpan.FromMilliseconds(5 * 1000);
+            _Timer.Tick += _Timer_Tick;
+            _Timer.Start();
         }
 
         // delegate is used to write to a UI control from a non-UI thread
@@ -395,9 +523,20 @@ namespace LindeVNA
                         currentLevel = split[10];
                     }
                     Operation = lastOrder;
-                    CurrentPosition = currentArea + " " + currentRow + "-" + currentLevel + "-" + currentLocation;
+                    string s = currentRow + "-" + currentLevel + "-" + currentLocation;
+                    if (Regex.Match(s, @"^([0-9][0-9])-[0-9][0-9]-[0-9][0-9]$").Success)
+                        AktualniPozice = s;
+                    CurrentPosition = currentArea + " " + s;
                     NominalPosition = nominalArea + " " + nominalRow + "-" + nominalLevel + "-" + nominalLocation;
                     Status = fault;
+                    if (!StatusConfirmed)
+                    {
+                        StatusConfirmed = true;
+                    }
+                    else
+                    {
+                        SendTelegram("Q", "s!");
+                    }
                     break;
                 case "b":
                     try
@@ -410,6 +549,19 @@ namespace LindeVNA
                         throw new ApplicationException("Chybný formát status telegramu.");
                     }
                     break;
+                case "q":
+                    string replyCommand = telegram.Substring(4, 1);
+                    string replyResult = telegram.Substring(5, 1);
+                    if (replyResult == "!")
+                    {
+                        switch (replyCommand)
+                        {
+                            case "F":
+                                OrderConfirmed = true;
+                                break;
+                        }
+                    }
+                    break;
                 default:
                     throw new ApplicationException("Nepodporovaný typ telegramu.");
             }
@@ -419,6 +571,39 @@ namespace LindeVNA
         {
             if (Globals.SgConnector != null && Globals.SgConnector.LoggedOn)
             {
+                if (HeliosVNA > 0)
+                    try
+                    {
+                        RunFunctionRequest request = new RunFunctionRequest();
+                        request.Function.FunctionId = 23480; //  VNA client request
+                        request.UserData = new FunctionUserData();
+
+                        InputTable inputTable = new InputTable("InputParams");
+                        inputTable.AddColumn("command_key", typeof(string));
+                        inputTable.AddColumn("vozik", typeof(int));
+                        int row = inputTable.AddRow();
+                        inputTable.SetItem(0, "command_key", "odhlaseni_voziku");
+                        inputTable.SetItem(0, "vozik", _HeliosVNA);
+                        List<InputTable> inputTables = new List<InputTable>();
+                        inputTables.Add(inputTable);
+                        request.UserData.SetDatastores<InputTable>(inputTables);
+
+                        try
+                        {
+                            RunFunctionResponse response = request.Process(Globals.SgConnector);
+                            Srv.ResponseStateFailure(response);
+                        }
+                        catch (Exception ex)
+                        {
+                            //MessageBox.Show("Nepodařilo se zjistit spárování vozíku v Heliosu: " + ex.Message);
+                        }
+
+                    }
+                    catch
+                    {
+
+                    }
+
                 try
                 {
                     Globals.SgConnector.LogOff();
@@ -487,8 +672,8 @@ namespace LindeVNA
         {
             try
             {
-                SendTelegram("<06CS>");
-                SendTelegram("<06CB>");
+                SendTelegram("C", "S");
+                SendTelegram("C", "B");
             }
             catch (Exception ex)
             {
@@ -496,10 +681,23 @@ namespace LindeVNA
             }
         }
 
-        private void SendTelegram(string telegram)
+        private void SendTelegram(string typ, string parametry)
         {
+            string telegram = typ + parametry;
+            telegram = "<" + (telegram.Length + 4).ToString("00") + telegram + ">";
             if (_SerialPort.IsOpen)
+            {
                 _SerialPort.Write(telegram);
+                switch (typ)
+                {
+                    case "C":
+                        StatusConfirmed = false;
+                        break;
+                    case "F":
+                        OrderConfirmed = false;
+                        break;
+                }
+            }
             else
                 throw new ApplicationException("Seriový port není otevřen.");
             InputTextBox.Text += telegram + "\r\n";
@@ -649,6 +847,42 @@ namespace LindeVNA
             {
                 MessageBox.Show("Nepodařilo se zjistit seznam nespárovaných zařízení v Heliosu:" + ex.Message);
             }
+        }
+
+        private void BtnNalozit_Click(object sender, RoutedEventArgs e)
+        {
+            string pozice = PoziceNalozit.Text;
+            _ParsePozice(pozice, out string oblast, out string rada, out string uroven, out string regal);
+            SendTelegram("F", $"H;{oblast};{rada};*;{regal};{uroven};0");
+        }
+
+        private void BtnVylozit_Click(object sender, RoutedEventArgs e)
+        {
+            string pozice = PoziceVylozit.Text;
+            _ParsePozice(pozice, out string oblast, out string rada, out string uroven, out string regal);
+            SendTelegram("F", $"B;{oblast};{rada};*;{regal};{uroven};0");
+        }
+
+        private void _ParsePozice(string pozice, out string oblast, out string rada, out string uroven, out string regal)
+        {
+            oblast = rada = uroven = regal = "";
+
+            Regex r = new Regex(@"^(?<oblast>[AB]) (?<rada>[0-9][0-9])-(?<uroven>[0-9][0-9])-(?<regal>[0-9][0-9])$", RegexOptions.Multiline | RegexOptions.Compiled);
+            Match m = r.Match(pozice);
+            if (m.Success)
+            {
+                oblast = m.Groups["oblast"].Value;
+                rada = m.Groups["rada"].Value;
+                uroven = m.Groups["uroven"].Value;
+                regal = m.Groups["regal"].Value;
+            }
+            else
+                throw new ApplicationException("Nepodporovaná regálová pozice.");
+        }
+
+        private void BtnRefresh_Click(object sender, RoutedEventArgs e)
+        {
+            _NactiUkol();
         }
     }
 }
