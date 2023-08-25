@@ -264,7 +264,7 @@ namespace LindeVNA
             }
         }
 
-
+        private DateTime _AktualizaceAktualniPozice = DateTime.Now;
         private string _AktualniPozice = "";
         public string AktualniPozice
         {
@@ -274,8 +274,9 @@ namespace LindeVNA
             }
             set
             {
-                if (_AktualniPozice != value)
+                if (_AktualniPozice != value || DateTime.Now.Subtract(_AktualizaceAktualniPozice) > TimeSpan.FromMinutes(9))
                 {
+                    _AktualizaceAktualniPozice = DateTime.Now;
                     RunFunctionRequest request = new RunFunctionRequest();
                     request.Function.FunctionId = 23480; //  VNA client request
                     request.UserData = new FunctionUserData();
@@ -569,6 +570,7 @@ namespace LindeVNA
 
         private void TerminalWindow_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
+            _Timer.Stop();
             if (Globals.SgConnector != null && Globals.SgConnector.LoggedOn)
             {
                 if (HeliosVNA > 0)
