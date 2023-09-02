@@ -112,7 +112,7 @@
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
-                <Label x:Name="lblStavUkolu" Content="Label" Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2" Margin="0" VerticalAlignment="Top" Width="387" Height="44" FontSize="24" HorizontalContentAlignment="Center"/>
+                <Label x:Name="lblStavUkolu" Content="Label" Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2" Margin="0" VerticalAlignment="Top" Width="387" Height="44" FontSize="24" HorizontalContentAlignment="Center" FontWeight="Bold" MouseDoubleClick="LblStavUkolu_MouseDoubleClick"/>
                 <StackPanel Grid.Column="1" Grid.Row="10" >
 
                     <TextBox x:Name="PoziceNalozit" Grid.Column="1" HorizontalAlignment="Left"  TextWrapping="Wrap" Text="B 10-05-30" VerticalAlignment="Top" />
@@ -124,16 +124,16 @@
                 <Label x:Name="lblAktualniPozice" Content="Aktuální pozice" HorizontalAlignment="Right" Grid.Column="0" Grid.Row="1" VerticalAlignment="Center" Margin="0,0,5,0"/>
                 <Label x:Name="lblOdkud" Content="Odkud" HorizontalAlignment="Right" Grid.Column="0" Grid.Row="2" VerticalAlignment="Center" Margin="0,0,5,0"/>
                 <Label x:Name="lblKam" Content="Kam" HorizontalAlignment="Right" Grid.Column="0" Grid.Row="3" VerticalAlignment="Center" Margin="0,0,5,0"/>
-                <Label x:Name="lblBalení" Content="Balení" HorizontalAlignment="Right" Grid.Column="0" Grid.Row="4" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                <Label x:Name="lblBaleni" Content="Balení" HorizontalAlignment="Right" Grid.Column="0" Grid.Row="4" VerticalAlignment="Center" Margin="0,0,5,0"/>
                 <Label x:Name="lblPriorita" Content="Priorita" HorizontalAlignment="Right" Grid.Column="0" Grid.Row="5" VerticalAlignment="Center" Margin="0,0,5,0"/>
 
                 <Label x:Name="lblAktualniPoziceVal" Content="Aktuální pozice" HorizontalAlignment="Left" Grid.Column="1" Grid.Row="1" VerticalAlignment="Center" Margin="0,0,5,0" FontWeight="Bold"/>
                 <Label x:Name="lblOdkudVal" Content="Odkud" HorizontalAlignment="Left" Grid.Column="2" Grid.Row="2" VerticalAlignment="Center" Margin="0,0,5,0" FontWeight="Bold"/>
                 <Label x:Name="lblKamVal" Content="Kam" HorizontalAlignment="Left" Grid.Column="3" Grid.Row="3" VerticalAlignment="Center" Margin="0,0,5,0" FontWeight="Bold"/>
-                <Label x:Name="lblBaleníVal" Content="Balení" HorizontalAlignment="Left" Grid.Column="4" Grid.Row="4" VerticalAlignment="Center" Margin="0,0,5,0" FontWeight="Bold"/>
+                <Label x:Name="lblBaleniVal" Content="Balení" HorizontalAlignment="Left" Grid.Column="4" Grid.Row="4" VerticalAlignment="Center" Margin="0,0,5,0" FontWeight="Bold"/>
                 <Label x:Name="lblPrioritaVal" Content="Priorita" HorizontalAlignment="Left" Grid.Column="5" Grid.Row="5" VerticalAlignment="Center" Margin="0,0,5,0" FontWeight="Bold"/>
 
-                <Button x:Name="btnDefault" Content="Default"  Grid.Row="6" Grid.Column="0" Grid.ColumnSpan="2" Margin="20" Click="BtnRefresh_Click" FontSize="20" Padding="10"/>
+                <Button x:Name="btnDefault" Content="Default"  Grid.Row="6" Grid.Column="0" Grid.ColumnSpan="2" Margin="20" FontSize="20" Padding="10" Click="BtnDefault_Click" FontWeight="Bold" Foreground="LightGray" Background="#FFE2FBE2" IsEnabled="False" IsEnabledChanged="BtnDefault_IsEnabledChanged"/>
 
             </Grid>
         </Grid>

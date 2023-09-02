@@ -38,7 +38,7 @@
             <Label x:Name="hesloLabel" Content="Helso" HorizontalAlignment="Right" Margin="0,0,10,0" Grid.Row="4" VerticalAlignment="Center" FontSize="16"/>
             <Label x:Name="profilLabel" Content="Profil" HorizontalAlignment="Right" Margin="0,0,10,0" Grid.Row="5" VerticalAlignment="Center" FontSize="16"/>
             <Label x:Name="jazykLabel" Content="Jazyk" HorizontalAlignment="Right" Margin="0,0,10,0" Grid.Row="6" VerticalAlignment="Center" FontSize="16"/>
-            <Label x:Name="urlLabel" Content="http://192.168.23.5/Helios4624" HorizontalAlignment="Center" Grid.Row="2" Grid.ColumnSpan="2" VerticalAlignment="Center" MouseDoubleClick="urlLabel_MouseDoubleClick"/>
+            <Label x:Name="urlLabel" Content="http://192.168.110.3/HeliosTestB1" HorizontalAlignment="Center" Grid.Row="2" Grid.ColumnSpan="2" VerticalAlignment="Center" MouseDoubleClick="urlLabel_MouseDoubleClick"/>
             <ComboBox x:Name="prihlasenComboBox" Grid.Column="1" Grid.Row="1" VerticalAlignment="Center" HorizontalContentAlignment="Left" Margin="0,0,20,0" FontSize="18"/>
             <ComboBox x:Name="profilComboBox" Grid.Column="1" Grid.Row="5" VerticalAlignment="Center" HorizontalContentAlignment="Left" Margin="0,0,20,0" FontSize="16"/>
             <ComboBox x:Name="jazykComboBox" Grid.Column="1" Grid.Row="6" VerticalAlignment="Center" HorizontalContentAlignment="Left" Margin="0,0,20,0" FontSize="16"/>

@@ -85,6 +85,7 @@ namespace LindeVNA
                 {
                     lblOperation.Visibility = Visibility.Hidden;
                 }
+                _PrekresliUkol();
             }
         }
 
@@ -103,6 +104,10 @@ namespace LindeVNA
                 {
                     lblCurrentPosition.Visibility = Visibility.Hidden;
                 }
+            }
+            get
+            {
+                return _CurrentPosition;
             }
         }
 
@@ -149,6 +154,10 @@ namespace LindeVNA
                 }
                 lblStatus.Content = String.Format("Status: {0}", popis);
                 lblStatus.Background = pozadi;
+            }
+            get
+            {
+                return _Status;
             }
         }
 
@@ -250,7 +259,6 @@ namespace LindeVNA
             }
         }
 
-
         private bool _StatusConfirmed;
         public bool StatusConfirmed
         {
@@ -274,12 +282,9 @@ namespace LindeVNA
             }
             set
             {
-                if (_AktualniPozice != value || DateTime.Now.Subtract(_AktualizaceAktualniPozice) > TimeSpan.FromMinutes(9))
+                if (!String.IsNullOrEmpty(value) && (_AktualniPozice != value || DateTime.Now.Subtract(_AktualizaceAktualniPozice) > TimeSpan.FromMinutes(9)))
                 {
                     _AktualizaceAktualniPozice = DateTime.Now;
-                    RunFunctionRequest request = new RunFunctionRequest();
-                    request.Function.FunctionId = 23480; //  VNA client request
-                    request.UserData = new FunctionUserData();
 
                     InputTable inputTable = new InputTable("InputParams");
                     inputTable.AddColumn("command_key", typeof(string));
@@ -288,15 +293,10 @@ namespace LindeVNA
                     int row = inputTable.AddRow();
                     inputTable.SetItem(0, "command_key", "zmena_aktualni_pozice");
                     inputTable.SetItem(0, "vozik", HeliosVNA);
-                    inputTable.SetItem(0, "aktualni_pozice", value);
-                    List<InputTable> inputTables = new List<InputTable>();
-                    inputTables.Add(inputTable);
-                    request.UserData.SetDatastores<InputTable>(inputTables);
-
+                    inputTable.SetItem(0, "aktualni_pozice", value.Substring(2));
                     try
                     {
-                        RunFunctionResponse response = request.Process(Globals.SgConnector);
-                        Srv.ResponseStateFailure(response);
+                        RunFunctionResponse response = _VnaClientRequest(inputTable);
                     }
                     catch (Exception ex)
                     {
@@ -305,10 +305,19 @@ namespace LindeVNA
 
                 }
                 _AktualniPozice = value;
+                if (lblAktualniPoziceVal.Content.ToString() != _AktualniPozice)
+                {
+                    lblAktualniPoziceVal.Content = _AktualniPozice;
+                    _PrekresliUkol();
+                }
             }
         }
 
-        public int UkolVNA { get; set; } = 0;
+        public int VybranyUkolVNA { get; set; } = 0;
+
+        public int NovyUkolVNA { get; set; } = 0;
+
+        public string StavUkoluVNA { get; set; } = "";
 
         private void _ResetStatus()
         {
@@ -346,28 +355,39 @@ namespace LindeVNA
 
         private void _Timer_Tick(object sender, EventArgs e)
         {
-            _NactiUkol();
+            if (VybranyUkolVNA == 0)
+                _NactiUkol();
         }
 
         private void _NactiUkol()
         {
+            string stavUkoluVna = "";
+
             if (HeliosVNA == 0)
             {
                 lblStavUkolu.Content = "Nespárováno Helios";
                 lblStavUkolu.Foreground = Brushes.Red;
             }
-            else if (String.IsNullOrEmpty(AktualniPozice))
+            else if (!_SerialPort.IsOpen)
             {
-                lblStavUkolu.Content = "Neznámá pozice";
+                lblStavUkolu.Content = "Nepřipojeno k VNA";
                 lblStavUkolu.Foreground = Brushes.Red;
             }
-            else if (UkolVNA == 0)
+            else if (String.IsNullOrEmpty(AktualniPozice))
+            {
+                if (!_HandShake())
+                    lblStavUkolu.Content = Status;
+                else
+                    lblStavUkolu.Content = "Neznámá pozice";
+                lblStavUkolu.Foreground = Brushes.Red;
+            }
+            else
             {
                 BrowseRequest request = new BrowseRequest(22567, new BrowseId(BrowseType.Template, 22645));
                 request.Bounds.LowerBound = 1;
                 request.Bounds.UpperBound = 1;
                 request.BaseFilterArguments = new FilterArgumentList();
-                request.BaseFilterArguments.Add("aktualni_pozice", AktualniPozice);
+                request.BaseFilterArguments.Add("aktualni_pozice", AktualniPozice.Substring(2));
                 request.BaseFilterArguments.Add("vna_vozik", HeliosVNA);
                 BrowseResponse response = request.Process(Globals.SgConnector);
                 DataTable table = response.Data.MainTable;
@@ -379,15 +399,78 @@ namespace LindeVNA
                 }
                 else
                 {
-                    lblStavUkolu.Content = table.Rows[0]["typ_operace_vna"].ToString() + ": " + table.Rows[0]["stav_ukolu_vna"].ToString();
+                    stavUkoluVna = table.Rows[0]["stav_ukolu_vna"].ToString();
+                    //string typOperaceVna = table.Rows[0]["typ_operace_vna"].ToString();
+
+                    lblStavUkolu.Content = table.Rows[0]["typ_operace_vna_es"].ToString() + ": " + table.Rows[0]["stav_ukolu_vna_es"].ToString();
                     lblAktualniPoziceVal.Content = AktualniPozice;
                     lblOdkudVal.Content = table.Rows[0]["odkud"].ToString();
                     lblKamVal.Content = table.Rows[0]["kam"].ToString();
                     lblPrioritaVal.Content = table.Rows[0]["priorita"].ToString();
-
                     lblStavUkolu.Foreground = Brushes.Green;
+
+                    lblAktualniPoziceVal.Foreground = Brushes.Black;
+                    lblOdkudVal.Foreground = Brushes.Black;
+                    lblKamVal.Foreground = Brushes.Black;
+
+                    if (stavUkoluVna == "P")
+                    {
+                        NovyUkolVNA = (Int32)table.Rows[0]["vna_ukol"];
+                        VybranyUkolVNA = 0;
+                    }
+                    else
+                    {
+                        NovyUkolVNA = 0;
+                        VybranyUkolVNA = (Int32)table.Rows[0]["vna_ukol"];
+                    }
+
+                    switch (stavUkoluVna)
+                    {
+                        case "P": //Plán
+                            btnDefault.Content = "ZAHÁJIT";
+                            btnDefault.IsEnabled = true;
+                            break;
+                        case "Z": // Zahájeno
+                            btnDefault.Content = "NALOŽIT";
+                            btnDefault.IsEnabled = true;
+                            break;
+                        case "N": // Nakládání
+                            {
+                                string odkud = lblOdkudVal.Content.ToString();
+                                _ParsePozice(odkud, out string oblast, out string rada, out string uroven, out string regal);
+                                SendTelegram("F", "H", $"{ oblast};{rada};*;{regal};{uroven};0");
+                                SendTelegram("C", "S", "");
+                                btnDefault.Content = "NALOŽENO";
+                                btnDefault.IsEnabled = false;
+                                break;
+                            }
+                        case "V": // Vykládání
+                            {
+                                string kam = lblKamVal.Content.ToString();
+                                _ParsePozice(kam, out string oblast, out string rada, out string uroven, out string regal);
+                                SendTelegram("F", "B", $"{ oblast};{rada};*;{regal};{uroven};0");
+                                btnDefault.Content = "VYLOŽENO";
+                                btnDefault.IsEnabled = false;
+                                break;
+                            }
+                        case "K": // Kontrola
+                            {
+                                string kam = lblKamVal.Content.ToString();
+                                _ParsePozice(kam, out string oblast, out string rada, out string uroven, out string regal);
+                                SendTelegram("F", "B", $"{ oblast};{rada};*;{regal};{uroven};0");
+                                SendTelegram("C", "S", "");
+                                btnDefault.Content = "VYLOŽENO";
+                                btnDefault.IsEnabled = false;
+                                break;
+                            }
+                        default:
+                            MessageBox.Show("Nepodporovaný stav VNA úkolu.");
+                            break;
+                    }
                 }
             }
+            StavUkoluVNA = stavUkoluVna;
+            _PrekresliUkol();
         }
 
         protected override void OnContentRendered(EventArgs e)
@@ -468,6 +551,15 @@ namespace LindeVNA
             }
         }
 
+        private string[] _SplitSC(string text)
+        {
+            int firstSC = text.IndexOf(";");
+            int lastSC = text.LastIndexOf(";");
+            if (firstSC < 0 || firstSC == lastSC)
+                throw new ApplicationException("Chybný formát status telegramu.");
+            return text.Substring(firstSC + 1, lastSC - firstSC - 1).Split(';');
+        }
+
         private void _ProcesTelegram(string telegram)
         {
             int delka = 0;
@@ -482,89 +574,127 @@ namespace LindeVNA
             if (delka != telegram.Length)
                 throw new ApplicationException("Deklarovaná délka telegramu neodpovídá jeho skutečné délce.");
             string command = telegram.Substring(3, 1);
+            string akce;
+            string[] split;
+
+            string currentArea = "";
+            string currentRow = "";
+            string currentBays = "";
+            string currentLocation = "";
+            string currentLevel = "";
+
             switch (command)
             {
                 case "p":
+                    split = _SplitSC(telegram);
+                    if (split.Length != 5)
+                        throw new ApplicationException("Chybný formát status telegramu.");
+                    currentArea = split[0];
+                    currentRow = split[1];
+                    currentBays = split[2];
+                    currentLocation = split[3];
+                    currentLevel = split[4];
+
+                    Operation = telegram.Substring(4, 1);
                     break;
                 case "a":
+                    split = _SplitSC(telegram);
+                    if (split.Length != 5)
+                        throw new ApplicationException("Chybný formát status telegramu.");
+                    currentArea = split[0];
+                    currentRow = split[1];
+                    currentBays = split[2];
+                    currentLocation = split[3];
+                    currentLevel = split[4];
+
+                    Operation = telegram.Substring(4, 1);
+                    btnDefault.IsEnabled = true;
                     break;
                 case "s":
-                    string lastOrder = telegram.Substring(4, 1);
-                    int firstSC = telegram.IndexOf(";");
-                    int lastSC = telegram.LastIndexOf(";");
-                    if (firstSC < 0 || firstSC == lastSC)
-                        throw new ApplicationException("Chybný formát status telegramu.");
-                    string[] split = telegram.Substring(firstSC + 1, lastSC - firstSC - 1).Split(';');
-                    if (split.Length != 10 && split.Length != 11)
-                        throw new ApplicationException("Chybný formát status telegramu.");
-                    string nominalArea = split[0];
-                    string nominalRow = split[1];
-                    string nominalBays = split[2];
-                    string nominalLocation = split[3];
-                    string nominalLevel = split[4];
+                    {
+                        split = _SplitSC(telegram);
+                        if (split.Length != 10 && split.Length != 11)
+                            throw new ApplicationException("Chybný formát status telegramu.");
+                        string nominalArea = split[0];
+                        string nominalRow = split[1];
+                        string nominalBays = split[2];
+                        string nominalLocation = split[3];
+                        string nominalLevel = split[4];
 
-                    string pom = split[5];
-                    string restart = pom.Substring(0, 1);
-                    string fault = pom.Substring(1, 3);
+                        string pom = split[5];
+                        string restart = pom.Substring(0, 1);
+                        string fault = pom.Substring(1, 3);
 
-                    //Takto to vrací emulátor vozíku
-                    string currentArea = pom.Substring(4);
-                    string currentRow = split[6];
-                    string currentBays = split[7];
-                    string currentLocation = split[8];
-                    string currentLevel = split[9];
+                        //Takto to vrací emulátor vozíku
+                        currentArea = pom.Substring(4);
+                        currentRow = split[6];
+                        currentBays = split[7];
+                        currentLocation = split[8];
+                        currentLevel = split[9];
 
-                    //Takto by to mělo být podle dokumentace
-                    if (split.Length == 11)
-                    {
-                        currentArea = split[6];
-                        currentRow = split[7];
-                        currentBays = split[8];
-                        currentLocation = split[9];
-                        currentLevel = split[10];
-                    }
-                    Operation = lastOrder;
-                    string s = currentRow + "-" + currentLevel + "-" + currentLocation;
-                    if (Regex.Match(s, @"^([0-9][0-9])-[0-9][0-9]-[0-9][0-9]$").Success)
-                        AktualniPozice = s;
-                    CurrentPosition = currentArea + " " + s;
-                    NominalPosition = nominalArea + " " + nominalRow + "-" + nominalLevel + "-" + nominalLocation;
-                    Status = fault;
-                    if (!StatusConfirmed)
-                    {
-                        StatusConfirmed = true;
-                    }
-                    else
-                    {
-                        SendTelegram("Q", "s!");
-                    }
-                    break;
-                case "b":
-                    try
-                    {
-                        OperationTime = Convert.ToInt32(telegram.Substring(4, 4));
-                        BaterryLevel = Convert.ToInt32(telegram.Substring(8, 3));
-                    }
-                    catch
-                    {
-                        throw new ApplicationException("Chybný formát status telegramu.");
-                    }
-                    break;
-                case "q":
-                    string replyCommand = telegram.Substring(4, 1);
-                    string replyResult = telegram.Substring(5, 1);
-                    if (replyResult == "!")
-                    {
-                        switch (replyCommand)
+                        //Takto by to mělo být podle dokumentace
+                        if (split.Length == 11)
                         {
-                            case "F":
-                                OrderConfirmed = true;
-                                break;
+                            currentArea = split[6];
+                            currentRow = split[7];
+                            currentBays = split[8];
+                            currentLocation = split[9];
+                            currentLevel = split[10];
                         }
+                        Operation = telegram.Substring(4, 1);
+                        NominalPosition = nominalArea + " " + nominalRow + "-" + nominalLevel + "-" + nominalLocation;
+                        Status = fault;
+                        if (!StatusConfirmed)
+                        {
+                            StatusConfirmed = true;
+                        }
+                        else
+                        {
+                            SendTelegram("Q", "s!", "");
+                        }
+                        break;
                     }
-                    break;
+                case "b":
+                    {
+                        try
+                        {
+                            OperationTime = Convert.ToInt32(telegram.Substring(4, 4));
+                            BaterryLevel = Convert.ToInt32(telegram.Substring(8, 3));
+                        }
+                        catch
+                        {
+                            throw new ApplicationException("Chybný formát status telegramu.");
+                        }
+                        break;
+                    }
+                case "q":
+                    {
+                        string replyCommand = telegram.Substring(4, 1);
+                        string replyResult = telegram.Substring(5, 1);
+                        if (replyResult == "!")
+                        {
+                            switch (replyCommand)
+                            {
+                                case "F":
+                                    OrderConfirmed = true;
+                                    break;
+                            }
+                        }
+                        break;
+                    }
                 default:
                     throw new ApplicationException("Nepodporovaný typ telegramu.");
+            }
+
+            if (!String.IsNullOrEmpty(currentArea))
+            {
+
+                currentLevel = (Convert.ToUInt32(currentLevel) - 1).ToString("00");
+
+                string s = currentRow + "-" + currentLevel + "-" + currentLocation;
+                CurrentPosition = currentArea + " " + s;
+                if (Regex.Match(s, @"^([0-9][0-9])-[0-9][0-9]-[0-9][0-9]$").Success)
+                    AktualniPozice = CurrentPosition;
             }
         }
 
@@ -576,24 +706,15 @@ namespace LindeVNA
                 if (HeliosVNA > 0)
                     try
                     {
-                        RunFunctionRequest request = new RunFunctionRequest();
-                        request.Function.FunctionId = 23480; //  VNA client request
-                        request.UserData = new FunctionUserData();
-
                         InputTable inputTable = new InputTable("InputParams");
                         inputTable.AddColumn("command_key", typeof(string));
                         inputTable.AddColumn("vozik", typeof(int));
                         int row = inputTable.AddRow();
                         inputTable.SetItem(0, "command_key", "odhlaseni_voziku");
                         inputTable.SetItem(0, "vozik", _HeliosVNA);
-                        List<InputTable> inputTables = new List<InputTable>();
-                        inputTables.Add(inputTable);
-                        request.UserData.SetDatastores<InputTable>(inputTables);
-
                         try
                         {
-                            RunFunctionResponse response = request.Process(Globals.SgConnector);
-                            Srv.ResponseStateFailure(response);
+                            RunFunctionResponse response = _VnaClientRequest(inputTable);
                         }
                         catch (Exception ex)
                         {
@@ -650,42 +771,56 @@ namespace LindeVNA
             }
             catch (Exception ex)
             {
-                MessageBox.Show(ex.Message.ToString());
+                MessageBox.Show(ex.Message);
             }
             finally
             {
+                _ResetStatus();
                 if (_SerialPort.IsOpen)
                 {
                     BtnConnect.Content = "Odpojit";
                     BtnConnect.Foreground = Brushes.Black;
                     cbxComPorts.IsEnabled = false;
+                    if (!_HandShake())
+                        MessageBox.Show(Status);
                 }
                 else
                 {
                     BtnConnect.Content = "Připojit";
                     BtnConnect.Foreground = Brushes.Red;
                     cbxComPorts.IsEnabled = true;
-                    _ResetStatus();
+                    Status = "Odpojeno";
                 }
             }
         }
 
         private void StatusRequestButton_Click(object sender, RoutedEventArgs e)
         {
+            if (!_HandShake())
+                MessageBox.Show(Status);
+        }
+
+        private bool _HandShake()
+        {
+            bool ret = false;
             try
             {
-                SendTelegram("C", "S");
-                SendTelegram("C", "B");
+                SendTelegram("C", "S", "");
+                SendTelegram("C", "B", "");
+                ret = true;
             }
             catch (Exception ex)
             {
-                MessageBox.Show(ex.Message.ToString());
+                Status = ex.Message;
             }
+            return ret;
         }
 
-        private void SendTelegram(string typ, string parametry)
+        private void SendTelegram(string typ, string action, string parametry)
         {
-            string telegram = typ + parametry;
+            string telegram = typ + action;
+            if (!String.IsNullOrWhiteSpace(parametry))
+                telegram += ";" + parametry;
             telegram = "<" + (telegram.Length + 4).ToString("00") + telegram + ">";
             if (_SerialPort.IsOpen)
             {
@@ -730,10 +865,6 @@ namespace LindeVNA
                 Int32 vozik = (Int32)cbxHeliosVNA.SelectedValue;
                 string newSID = DateTime.Now.ToString("yyMMdd") + "-" + Guid.NewGuid();
 
-                RunFunctionRequest request = new RunFunctionRequest();
-                request.Function.FunctionId = 23480; //  VNA client request
-                request.UserData = new FunctionUserData();
-
                 InputTable inputTable = new InputTable("InputParams");
                 inputTable.AddColumn("command_key", typeof(string));
                 inputTable.AddColumn("vozik", typeof(int));
@@ -742,14 +873,9 @@ namespace LindeVNA
                 inputTable.SetItem(0, "command_key", "sparuj_vna_vozik");
                 inputTable.SetItem(0, "vozik", vozik);
                 inputTable.SetItem(0, "new_sid", newSID);
-                List<InputTable> inputTables = new List<InputTable>();
-                inputTables.Add(inputTable);
-                request.UserData.SetDatastores<InputTable>(inputTables);
-
                 try
                 {
-                    RunFunctionResponse response = request.Process(Globals.SgConnector);
-                    Srv.ResponseStateFailure(response);
+                    RunFunctionResponse response = _VnaClientRequest(inputTable);
                     _KontrolaSparovani(vozik, newSID);
                 }
                 catch (Exception ex)
@@ -763,10 +889,6 @@ namespace LindeVNA
         {
             string newSID = DateTime.Now.ToString("yyMMdd") + "-" + Guid.NewGuid();
 
-            RunFunctionRequest request = new RunFunctionRequest();
-            request.Function.FunctionId = 23480; //  VNA client request
-            request.UserData = new FunctionUserData();
-
             InputTable inputTable = new InputTable("InputParams");
             inputTable.AddColumn("command_key", typeof(string));
             inputTable.AddColumn("vozik", typeof(int));
@@ -777,14 +899,9 @@ namespace LindeVNA
             inputTable.SetItem(0, "vozik", vozik);
             inputTable.SetItem(0, "old_sid", sid);
             inputTable.SetItem(0, "new_sid", newSID);
-            List<InputTable> inputTables = new List<InputTable>();
-            inputTables.Add(inputTable);
-            request.UserData.SetDatastores<InputTable>(inputTables);
-
             try
             {
-                RunFunctionResponse response = request.Process(Globals.SgConnector);
-                Srv.ResponseStateFailure(response);
+                RunFunctionResponse response = _VnaClientRequest(inputTable);
 
                 //Uložení do konfigurace
                 HeliosVNA = vozik;
@@ -817,22 +934,15 @@ namespace LindeVNA
 
         private void NactiVozikyProParovani()
         {
-            RunFunctionRequest request = new RunFunctionRequest();
-            request.Function.FunctionId = 23480; //  VNA client request
-            request.UserData = new FunctionUserData();
 
             InputTable inputTable = new InputTable("InputParams");
             inputTable.AddColumn("command_key", typeof(string));
             int row = inputTable.AddRow();
             inputTable.SetItem(0, "command_key", "get_free_vna_list");
-            List<InputTable> inputTables = new List<InputTable>();
-            inputTables.Add(inputTable);
-            request.UserData.SetDatastores<InputTable>(inputTables);
 
             try
             {
-                RunFunctionResponse response = request.Process(Globals.SgConnector);
-                Srv.ResponseStateFailure(response);
+                RunFunctionResponse response = _VnaClientRequest(inputTable);
                 if (response.OutputParams.Table.Rows.Count > 0)
                 {
                     cbxHeliosVNA.ItemsSource = response.OutputParams.Table.DefaultView;
@@ -851,18 +961,42 @@ namespace LindeVNA
             }
         }
 
+        private RunFunctionResponse _VnaClientRequest(InputTable inputTable)
+        {
+            RunFunctionRequest request = new RunFunctionRequest();
+            request.Function.FunctionId = 23480; //  VNA client request
+            request.UserData = new FunctionUserData();
+            List<InputTable> inputTables = new List<InputTable>();
+            inputTables.Add(inputTable);
+            request.UserData.SetDatastores<InputTable>(inputTables);
+            RunFunctionResponse response = request.Process(Globals.SgConnector);
+            bool failure = response.State == ResponseState.Failure;
+            if (failure)
+            {
+                if (response.Error.Level == ErrorLevel.Application)
+                {
+                    throw new Exception(response.Error.Message);
+                }
+                else
+                {
+                    throw new Exception(response.Error.ToString());
+                }
+            }
+            return response;
+        }
+
         private void BtnNalozit_Click(object sender, RoutedEventArgs e)
         {
             string pozice = PoziceNalozit.Text;
             _ParsePozice(pozice, out string oblast, out string rada, out string uroven, out string regal);
-            SendTelegram("F", $"H;{oblast};{rada};*;{regal};{uroven};0");
+            SendTelegram("F", "H", $"{ oblast};{rada};*;{regal};{uroven};0");
         }
 
         private void BtnVylozit_Click(object sender, RoutedEventArgs e)
         {
             string pozice = PoziceVylozit.Text;
             _ParsePozice(pozice, out string oblast, out string rada, out string uroven, out string regal);
-            SendTelegram("F", $"B;{oblast};{rada};*;{regal};{uroven};0");
+            SendTelegram("F", "B", $"{ oblast};{rada};*;{regal};{uroven};0");
         }
 
         private void _ParsePozice(string pozice, out string oblast, out string rada, out string uroven, out string regal)
@@ -875,7 +1009,8 @@ namespace LindeVNA
             {
                 oblast = m.Groups["oblast"].Value;
                 rada = m.Groups["rada"].Value;
-                uroven = m.Groups["uroven"].Value;
+                //uroven = m.Groups["uroven"].Value;
+                uroven = (Convert.ToInt32( m.Groups["uroven"].Value) + 1).ToString("00");
                 regal = m.Groups["regal"].Value;
             }
             else
@@ -883,6 +1018,132 @@ namespace LindeVNA
         }
 
         private void BtnRefresh_Click(object sender, RoutedEventArgs e)
+        {
+            _NactiUkol();
+        }
+
+        private void BtnDefault_Click(object sender, RoutedEventArgs e)
+        {
+            InputTable inputTable = new InputTable("InputParams");
+            inputTable.AddColumn("command_key", typeof(string));
+            inputTable.AddColumn("vozik", typeof(int));
+            inputTable.AddColumn("novy_ukol_vna", typeof(int));
+            inputTable.AddColumn("vybrany_ukol_vna", typeof(int));
+            int row = inputTable.AddRow();
+            inputTable.SetItem(0, "command_key", "default_click");
+            inputTable.SetItem(0, "vozik", HeliosVNA);
+            inputTable.SetItem(0, "novy_ukol_vna", NovyUkolVNA);
+            inputTable.SetItem(0, "vybrany_ukol_vna", VybranyUkolVNA);
+            try
+            {
+                _Timer.Stop();
+                RunFunctionResponse response = _VnaClientRequest(inputTable);
+                _NactiUkol();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message);
+            }
+            finally
+            {
+                _Timer.Start();
+            }
+        }
+
+        private void _PrekresliUkol()
+        {
+            Brush aktualniPoziceBrush = Brushes.Black;
+            Brush odkudBrush = Brushes.Black;
+            Brush kamBrush = Brushes.Black;
+
+            Visibility lblAktualniPoziceVisibility = Visibility.Hidden; 
+            Visibility lblAktualniPoziceValVisibility = Visibility.Hidden;
+            Visibility lblOdkudVisibility = Visibility.Hidden;
+            Visibility lblOdkudValVisibility = Visibility.Hidden;
+            Visibility lblKamVisibility = Visibility.Hidden;
+            Visibility lblOdKamValVisibility = Visibility.Hidden;
+            Visibility lblPrioritaVisibility = Visibility.Hidden;
+            Visibility lblPrioritaValVisibility = Visibility.Hidden;
+            Visibility lblBaleniVisibility = Visibility.Hidden;
+            Visibility lblBaleniValVisibility = Visibility.Hidden;
+
+            Visibility btnDefaultVisibility = Visibility.Hidden; 
+
+            if (!String.IsNullOrEmpty(StavUkoluVNA))
+            {
+                lblAktualniPoziceVisibility = Visibility.Visible;
+                lblAktualniPoziceValVisibility = Visibility.Visible;
+                lblOdkudVisibility = Visibility.Visible;
+                lblOdkudValVisibility = Visibility.Visible;
+                lblKamVisibility = Visibility.Visible;
+                lblOdKamValVisibility = Visibility.Visible;
+                lblPrioritaVisibility = Visibility.Visible;
+                lblPrioritaValVisibility = Visibility.Visible;
+                lblBaleniVisibility = Visibility.Visible;
+                lblBaleniValVisibility = Visibility.Visible;
+
+                btnDefaultVisibility = Visibility.Visible;
+            }
+            if (StavUkoluVNA != "P")
+            {
+                if (_Operation == "H") //Naložení
+                {
+                    if (lblAktualniPoziceVal.Content.ToString() == lblOdkudVal.Content.ToString())
+                    {
+                        aktualniPoziceBrush = Brushes.Green;
+                        odkudBrush = Brushes.Green;
+                    }
+                    else
+                    {
+                        aktualniPoziceBrush = Brushes.Red;
+                        odkudBrush = Brushes.Red;
+                    }
+                }
+                else if (_Operation == "B") //Vyložení
+                {
+                    if (lblAktualniPoziceVal.Content.ToString() == lblKamVal.Content.ToString())
+                    {
+                        aktualniPoziceBrush = Brushes.Green;
+                        kamBrush = Brushes.Green;
+                    }
+                    else
+                    {
+                        aktualniPoziceBrush = Brushes.Red;
+                        kamBrush = Brushes.Red;
+                    }
+                }
+            }
+
+            lblAktualniPoziceVal.Foreground = aktualniPoziceBrush;
+            lblOdkudVal.Foreground = odkudBrush;
+            lblKamVal.Foreground = kamBrush;
+
+            lblAktualniPozice.Visibility = lblAktualniPoziceVisibility;
+            lblAktualniPoziceVal.Visibility = lblAktualniPoziceValVisibility;
+            lblOdkud.Visibility = lblOdkudVisibility;
+            lblOdkudVal.Visibility = lblOdkudValVisibility;
+            lblKam.Visibility = lblKamVisibility;
+            lblKamVal.Visibility = lblOdKamValVisibility;
+            lblPriorita.Visibility = lblPrioritaVisibility;
+            lblPrioritaVal.Visibility = lblPrioritaValVisibility;
+            lblBaleni.Visibility = lblBaleniVisibility;
+            lblBaleniVal.Visibility = lblBaleniValVisibility;
+
+            btnDefault.Visibility = btnDefaultVisibility;
+
+        }
+
+        private void BtnDefault_IsEnabledChanged(object sender, DependencyPropertyChangedEventArgs e)
+        {
+            Button b = (Button)sender;
+            if (b.IsEnabled)
+                b.Foreground = Brushes.Green;
+            else
+                b.Foreground = Brushes.LightGray;
+                
+        }
+
+        private void LblStavUkolu_MouseDoubleClick(object sender, MouseButtonEventArgs e)
         {
             _NactiUkol();
         }

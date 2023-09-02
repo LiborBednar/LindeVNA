@@ -52,23 +52,6 @@ namespace LindeVNA
             configuration.Save(ConfigurationSaveMode.Full, true);
             ConfigurationManager.RefreshSection("appSettings");
         }
-
-        public static void ResponseStateFailure(ServiceGateResponse response)
-        {
-            bool failure = response.State == ResponseState.Failure;
-            if (failure)
-            {
-                if (response.Error.Level == ErrorLevel.Application)
-                {
-                    throw new Exception(response.Error.Message);
-                }
-                else
-                {
-                    throw new Exception(response.Error.ToString());
-                }
-            }
-        }
-
     }
 
     public class InputTable : DataTable
