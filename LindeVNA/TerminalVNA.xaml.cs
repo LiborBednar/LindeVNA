@@ -333,6 +333,9 @@ namespace LindeVNA
         {
             InitializeComponent();
 
+            if (Globals.SgConnector.LogOnInfo.DbProfile.ToUpper().Contains("TEST"))
+                Background = Brushes.LightPink;
+
             foreach (string s in SerialPort.GetPortNames())
                 cbxComPorts.Items.Add(s);
             if (cbxComPorts.Items.Count > 0)
@@ -362,10 +365,17 @@ namespace LindeVNA
         private void _NactiUkol()
         {
             string stavUkoluVna = "";
+            VybranyUkolVNA = 0;
+            NovyUkolVNA = 0;
 
             if (HeliosVNA == 0)
             {
                 lblStavUkolu.Content = "Nespárováno Helios";
+                lblStavUkolu.Foreground = Brushes.Red;
+            }
+            else if (_SerialPort == null)
+            {
+                lblStavUkolu.Content = "Není vybrán komunikační port";
                 lblStavUkolu.Foreground = Brushes.Red;
             }
             else if (!_SerialPort.IsOpen)
@@ -375,7 +385,7 @@ namespace LindeVNA
             }
             else if (String.IsNullOrEmpty(AktualniPozice))
             {
-                if (!_HandShake())
+                if (!_HandShakeS())
                     lblStavUkolu.Content = Status;
                 else
                     lblStavUkolu.Content = "Neznámá pozice";
@@ -414,24 +424,18 @@ namespace LindeVNA
                     lblKamVal.Foreground = Brushes.Black;
 
                     if (stavUkoluVna == "P")
-                    {
                         NovyUkolVNA = (Int32)table.Rows[0]["vna_ukol"];
-                        VybranyUkolVNA = 0;
-                    }
                     else
-                    {
-                        NovyUkolVNA = 0;
                         VybranyUkolVNA = (Int32)table.Rows[0]["vna_ukol"];
-                    }
 
                     switch (stavUkoluVna)
                     {
                         case "P": //Plán
-                            btnDefault.Content = "ZAHÁJIT";
+                            btnDefault.Content = "ZAHÁJIT ÚKOL";
                             btnDefault.IsEnabled = true;
                             break;
                         case "Z": // Zahájeno
-                            btnDefault.Content = "NALOŽIT";
+                            btnDefault.Content = "ZAHÁJIT NAKLÁDÁNÍ";
                             btnDefault.IsEnabled = true;
                             break;
                         case "N": // Nakládání
@@ -440,7 +444,7 @@ namespace LindeVNA
                                 _ParsePozice(odkud, out string oblast, out string rada, out string uroven, out string regal);
                                 SendTelegram("F", "H", $"{ oblast};{rada};*;{regal};{uroven};0");
                                 SendTelegram("C", "S", "");
-                                btnDefault.Content = "NALOŽENO";
+                                btnDefault.Content = "POTVRDIT NALOŽENÍ";
                                 btnDefault.IsEnabled = false;
                                 break;
                             }
@@ -449,7 +453,8 @@ namespace LindeVNA
                                 string kam = lblKamVal.Content.ToString();
                                 _ParsePozice(kam, out string oblast, out string rada, out string uroven, out string regal);
                                 SendTelegram("F", "B", $"{ oblast};{rada};*;{regal};{uroven};0");
-                                btnDefault.Content = "VYLOŽENO";
+                                SendTelegram("C", "S", "");
+                                btnDefault.Content = "POTVRDIT VYLOŽENÍ";
                                 btnDefault.IsEnabled = false;
                                 break;
                             }
@@ -535,8 +540,10 @@ namespace LindeVNA
                     {
                         string telegram = _DataBuffer.Substring(0, telegramEnd + 1);
                         _DataBuffer = _DataBuffer.Remove(0, telegramEnd + 1);
-                        OutputTextBox.Text += telegram + "\r\n";
-                        OutputTextBox.ScrollToEnd();
+
+                        tbTelegramy.Inlines.Add(new Run(telegram + "\r\n") { Foreground = Brushes.DarkViolet });
+                        TelegramyScrollViewer.ScrollToEnd();
+
                         try
                         {
                             _ProcesTelegram(telegram);
@@ -700,6 +707,15 @@ namespace LindeVNA
 
         private void TerminalWindow_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
+            if (VybranyUkolVNA > 0)
+            {
+                if (MessageBox.Show("Chcete aplikaci opravdu ukončit, přestože máte rozpracovaný VNA úkol?", "Dotaz", MessageBoxButton.YesNo) == MessageBoxResult.No)
+                {
+                    e.Cancel = true;
+                    return;
+                 }
+            }
+
             _Timer.Stop();
             if (Globals.SgConnector != null && Globals.SgConnector.LoggedOn)
             {
@@ -781,7 +797,7 @@ namespace LindeVNA
                     BtnConnect.Content = "Odpojit";
                     BtnConnect.Foreground = Brushes.Black;
                     cbxComPorts.IsEnabled = false;
-                    if (!_HandShake())
+                    if (!_HandShakeS())
                         MessageBox.Show(Status);
                 }
                 else
@@ -794,18 +810,35 @@ namespace LindeVNA
             }
         }
 
-        private void StatusRequestButton_Click(object sender, RoutedEventArgs e)
+        private async void StatusRequestButton_Click(object sender, RoutedEventArgs e)
         {
-            if (!_HandShake())
+            if (!_HandShakeS())
+                MessageBox.Show(Status);
+            await Task.Delay(200);
+            if (!_HandShakeB())
                 MessageBox.Show(Status);
         }
 
-        private bool _HandShake()
+        private bool _HandShakeS()
         {
             bool ret = false;
             try
             {
                 SendTelegram("C", "S", "");
+                ret = true;
+            }
+            catch (Exception ex)
+            {
+                Status = ex.Message;
+            }
+            return ret;
+        }
+
+        private bool _HandShakeB()
+        {
+            bool ret = false;
+            try
+            {
                 SendTelegram("C", "B", "");
                 ret = true;
             }
@@ -837,19 +870,19 @@ namespace LindeVNA
             }
             else
                 throw new ApplicationException("Seriový port není otevřen.");
-            InputTextBox.Text += telegram + "\r\n";
-            InputTextBox.ScrollToEnd();
 
+            tbTelegramy.Inlines.Add(new Run(telegram + "\r\n") { Foreground = Brushes.Blue });
+            TelegramyScrollViewer.ScrollToEnd();
         }
 
-        private void BtnClearOutputBox_Click(object sender, RoutedEventArgs e)
-        {
-            OutputTextBox.Clear();
-        }
+        //private void BtnClearOutputBox_Click(object sender, RoutedEventArgs e)
+        //{
+        //    OutputTextBox.Clear();
+        //}
 
-        private void BtnClearInputBox_Click(object sender, RoutedEventArgs e)
+        private void BtnClearTelegramy_Click(object sender, RoutedEventArgs e)
         {
-            InputTextBox.Clear();
+            tbTelegramy.Text = "";
         }
 
         private void CbxComPorts_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -985,20 +1018,6 @@ namespace LindeVNA
             return response;
         }
 
-        private void BtnNalozit_Click(object sender, RoutedEventArgs e)
-        {
-            string pozice = PoziceNalozit.Text;
-            _ParsePozice(pozice, out string oblast, out string rada, out string uroven, out string regal);
-            SendTelegram("F", "H", $"{ oblast};{rada};*;{regal};{uroven};0");
-        }
-
-        private void BtnVylozit_Click(object sender, RoutedEventArgs e)
-        {
-            string pozice = PoziceVylozit.Text;
-            _ParsePozice(pozice, out string oblast, out string rada, out string uroven, out string regal);
-            SendTelegram("F", "B", $"{ oblast};{rada};*;{regal};{uroven};0");
-        }
-
         private void _ParsePozice(string pozice, out string oblast, out string rada, out string uroven, out string regal)
         {
             oblast = rada = uroven = regal = "";
@@ -1015,11 +1034,6 @@ namespace LindeVNA
             }
             else
                 throw new ApplicationException("Nepodporovaná regálová pozice.");
-        }
-
-        private void BtnRefresh_Click(object sender, RoutedEventArgs e)
-        {
-            _NactiUkol();
         }
 
         private void BtnDefault_Click(object sender, RoutedEventArgs e)
@@ -1067,7 +1081,10 @@ namespace LindeVNA
             Visibility lblBaleniVisibility = Visibility.Hidden;
             Visibility lblBaleniValVisibility = Visibility.Hidden;
 
-            Visibility btnDefaultVisibility = Visibility.Hidden; 
+            Visibility btnDefaultVisibility = Visibility.Hidden;
+            Visibility btnChybaVisibility = Visibility.Collapsed;
+            Visibility btnNenalezenoVisibility = Visibility.Collapsed;
+            Visibility btnVynechatVisibility = Visibility.Collapsed;
 
             if (!String.IsNullOrEmpty(StavUkoluVNA))
             {
@@ -1083,11 +1100,18 @@ namespace LindeVNA
                 lblBaleniValVisibility = Visibility.Visible;
 
                 btnDefaultVisibility = Visibility.Visible;
+                btnChybaVisibility = Visibility.Visible;
             }
-            if (StavUkoluVNA != "P")
+
+            switch (StavUkoluVNA)
             {
-                if (_Operation == "H") //Naložení
-                {
+                case "P": //Plán
+                    btnVynechatVisibility = Visibility.Visible;
+                    break;
+                case "Z": // Zahájeno
+                    break;
+                case "N": // Nakládání
+                    btnNenalezenoVisibility = Visibility.Visible;
                     if (lblAktualniPoziceVal.Content.ToString() == lblOdkudVal.Content.ToString())
                     {
                         aktualniPoziceBrush = Brushes.Green;
@@ -1098,9 +1122,9 @@ namespace LindeVNA
                         aktualniPoziceBrush = Brushes.Red;
                         odkudBrush = Brushes.Red;
                     }
-                }
-                else if (_Operation == "B") //Vyložení
-                {
+                    break;
+                case "V": // Vykládání
+                    btnNenalezenoVisibility = Visibility.Visible;
                     if (lblAktualniPoziceVal.Content.ToString() == lblKamVal.Content.ToString())
                     {
                         aktualniPoziceBrush = Brushes.Green;
@@ -1111,7 +1135,10 @@ namespace LindeVNA
                         aktualniPoziceBrush = Brushes.Red;
                         kamBrush = Brushes.Red;
                     }
-                }
+                    break;
+                case "K": // Kontrola
+                    btnNenalezenoVisibility = Visibility.Visible;
+                    break;
             }
 
             lblAktualniPoziceVal.Foreground = aktualniPoziceBrush;
@@ -1130,6 +1157,9 @@ namespace LindeVNA
             lblBaleniVal.Visibility = lblBaleniValVisibility;
 
             btnDefault.Visibility = btnDefaultVisibility;
+            btnChyba.Visibility = btnChybaVisibility;
+            btnNenalezeno.Visibility = btnNenalezenoVisibility;
+            btnVynechat.Visibility = btnVynechatVisibility;
 
         }
 
@@ -1146,6 +1176,34 @@ namespace LindeVNA
         private void LblStavUkolu_MouseDoubleClick(object sender, MouseButtonEventArgs e)
         {
             _NactiUkol();
+        }
+
+        private void CbFullScreen_Checked(object sender, RoutedEventArgs e)
+        {
+            Visibility = Visibility.Collapsed;
+            WindowStyle = WindowStyle.None;
+            ResizeMode = ResizeMode.NoResize;
+            WindowState = WindowState.Maximized;
+            Topmost = true;
+            Visibility = Visibility.Visible;
+        }
+
+        private void CbFullScreen_Unchecked(object sender, RoutedEventArgs e)
+        {
+            WindowStyle = WindowStyle.SingleBorderWindow;
+            ResizeMode = ResizeMode.CanResize;
+            Topmost = false;
+        }
+
+        private void TerminalWindow_SizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            Size_X.Content = Width;
+            Size_Y.Content = Height;
+        }
+
+        private void BtnUkoncit_Click(object sender, RoutedEventArgs e)
+        {
+            Close();
         }
     }
 }

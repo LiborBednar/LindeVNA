@@ -6,7 +6,9 @@
         xmlns:local="clr-namespace:LindeVNA"
         mc:Ignorable="d"
         WindowStartupLocation="CenterScreen"
-        Title="TerminalVNA" Height="450" Width="800" Closing="TerminalWindow_Closing">
+        WindowStyle="SingleBorderWindow"
+        Style="{StaticResource VNAStyle}"
+        Title="TerminalVNA" Height="620" Width="1024" Closing="TerminalWindow_Closing" SizeChanged="TerminalWindow_SizeChanged">
     <DockPanel>
         <StatusBar DockPanel.Dock="Bottom">
             <StatusBar.ItemsPanel>
@@ -69,31 +71,29 @@
 
         <Grid>
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="180"/>
+                <ColumnDefinition Width="240"/>
                 <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="220"/>
+                <ColumnDefinition Width="240"/>
             </Grid.ColumnDefinitions>
-            <StackPanel Orientation="Vertical" Margin="0">
+            <StackPanel Orientation="Vertical" Margin="0" ContextMenuClosing="CbFullScreen_Checked" VerticalAlignment="Top">
                 <Label x:Name="lblHeliosVNA" Content="ID vozíku" HorizontalAlignment="Center" Margin="10,10,5,0" />
-                <ComboBox x:Name="cbxHeliosVNA" Height="20" Margin="10,0,10,0" VerticalAlignment="Top" SelectionChanged="CbxHeliosVNA_SelectionChanged" IsEnabled="False"/>
+                <ComboBox x:Name="cbxHeliosVNA" Margin="10,0,10,0" VerticalAlignment="Top" SelectionChanged="CbxHeliosVNA_SelectionChanged" IsEnabled="False"/>
                 <Label x:Name="lblSklad" Content="Sklad" HorizontalAlignment="Center" Margin="10,10,5,0" />
-                <TextBox x:Name="tbxSklad" Height="20" Margin="10,0,10,0" VerticalAlignment="Top" IsEnabled="False"/>
+                <TextBox x:Name="tbxSklad" Margin="10,0,10,0" Padding="3" VerticalAlignment="Top" IsEnabled="False"/>
                 <Label x:Name="lblComPorts" Content="Komunikační port" HorizontalAlignment="Center" Margin="10,10,5,0"/>
-                <ComboBox x:Name="cbxComPorts" Height="20" Margin="10,0,10,0" VerticalAlignment="Top" SelectionChanged="CbxComPorts_SelectionChanged"/>
-                <Button x:Name="BtnConnect" Content="Připojit" Click="BtnConnect_Click" Height="20" Margin="10,20,10,0" VerticalAlignment="Top"/>
+                <ComboBox x:Name="cbxComPorts" Margin="10,0,10,0" VerticalAlignment="Top" SelectionChanged="CbxComPorts_SelectionChanged"/>
+                <Button x:Name="BtnConnect" Content="Připojit" Click="BtnConnect_Click" Margin="10,20,10,0" Padding="5" VerticalAlignment="Top" FontWeight="Bold"/>
+                <CheckBox x:Name="cbFullScreen" Content="FullScreen" Margin="10,20,10,0" HorizontalAlignment="Center" Unchecked="CbFullScreen_Unchecked" Checked="CbFullScreen_Checked"/>
+                <Label x:Name="Size_X" Content="Label"/>
+                <Label x:Name="Size_Y" Content="Label"/>
             </StackPanel>
+            <Button x:Name="BtnUkoncit" Content="Ukončit" Click="BtnUkoncit_Click" Margin="10" Padding="10" VerticalAlignment="Bottom" FontWeight="Bold"/>
             <Grid Grid.Column="2">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="*" />
-                    <RowDefinition Height="*" />
-                </Grid.RowDefinitions>
                 <DockPanel Grid.Row="0" >
-                    <Button x:Name="btnClearInputBox" Content="Smazat odchozí telegramy" DockPanel.Dock="Top" Click="BtnClearInputBox_Click"/>
-                    <TextBox x:Name="InputTextBox" Margin="0" TextWrapping="Wrap" VerticalScrollBarVisibility="Visible" IsReadOnly="True"/>
-                </DockPanel>
-                <DockPanel Grid.Row="1" >
-                    <Button x:Name="btnClearOutputBox" Content="Smazat příchozí telegramy" DockPanel.Dock="Top" Click="BtnClearOutputBox_Click"/>
-                    <TextBox x:Name="OutputTextBox" Margin="0" TextWrapping="Wrap" VerticalScrollBarVisibility="Visible" IsReadOnly="True"/>
+                    <Button x:Name="btnClearTelegramy" Content="Smazat telegramy" DockPanel.Dock="Top" Click="BtnClearTelegramy_Click"/>
+                    <ScrollViewer x:Name="TelegramyScrollViewer" BorderBrush="#FF707070" BorderThickness="1">
+                        <TextBlock x:Name="tbTelegramy" HorizontalAlignment="Stretch" Grid.Row="2" TextWrapping="Wrap" Text="" VerticalAlignment="Stretch" FontSize="13"/>
+                    </ScrollViewer>
                 </DockPanel>
             </Grid>
             <Grid Grid.Column="1">
@@ -110,17 +110,9 @@
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
                 </Grid.RowDefinitions>
-                <Label x:Name="lblStavUkolu" Content="Label" Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2" Margin="0" VerticalAlignment="Top" Width="387" Height="44" FontSize="24" HorizontalContentAlignment="Center" FontWeight="Bold" MouseDoubleClick="LblStavUkolu_MouseDoubleClick"/>
-                <StackPanel Grid.Column="1" Grid.Row="10" >
-
-                    <TextBox x:Name="PoziceNalozit" Grid.Column="1" HorizontalAlignment="Left"  TextWrapping="Wrap" Text="B 10-05-30" VerticalAlignment="Top" />
-                    <Button x:Name="btnVylozit" Content="Button" Grid.Column="1" HorizontalAlignment="Left"  VerticalAlignment="Top" Click="BtnVylozit_Click"/>
-                    <TextBox x:Name="PoziceVylozit" Grid.Column="1" HorizontalAlignment="Left"  TextWrapping="Wrap" Text="A 45-01-03" VerticalAlignment="Top" />
-                    <Button x:Name="btnNalozit" Content="Button" Grid.Column="1" HorizontalAlignment="Left"  VerticalAlignment="Top" Click="BtnNalozit_Click"/>
-                    <Button x:Name="btnRefresh" Content="Refresh"  Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" Margin="0,10,0,0" VerticalAlignment="Top" HorizontalAlignment="Center" Click="BtnRefresh_Click"/>
-                </StackPanel>
+                <Label x:Name="lblStavUkolu" Content="Label" Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2" Margin="0" VerticalAlignment="Top" FontSize="24" HorizontalContentAlignment="Center" FontWeight="Bold" MouseDoubleClick="LblStavUkolu_MouseDoubleClick"/>
                 <Label x:Name="lblAktualniPozice" Content="Aktuální pozice" HorizontalAlignment="Right" Grid.Column="0" Grid.Row="1" VerticalAlignment="Center" Margin="0,0,5,0"/>
                 <Label x:Name="lblOdkud" Content="Odkud" HorizontalAlignment="Right" Grid.Column="0" Grid.Row="2" VerticalAlignment="Center" Margin="0,0,5,0"/>
                 <Label x:Name="lblKam" Content="Kam" HorizontalAlignment="Right" Grid.Column="0" Grid.Row="3" VerticalAlignment="Center" Margin="0,0,5,0"/>
@@ -133,8 +125,20 @@
                 <Label x:Name="lblBaleniVal" Content="Balení" HorizontalAlignment="Left" Grid.Column="4" Grid.Row="4" VerticalAlignment="Center" Margin="0,0,5,0" FontWeight="Bold"/>
                 <Label x:Name="lblPrioritaVal" Content="Priorita" HorizontalAlignment="Left" Grid.Column="5" Grid.Row="5" VerticalAlignment="Center" Margin="0,0,5,0" FontWeight="Bold"/>
 
-                <Button x:Name="btnDefault" Content="Default"  Grid.Row="6" Grid.Column="0" Grid.ColumnSpan="2" Margin="20" FontSize="20" Padding="10" Click="BtnDefault_Click" FontWeight="Bold" Foreground="LightGray" Background="#FFE2FBE2" IsEnabled="False" IsEnabledChanged="BtnDefault_IsEnabledChanged"/>
+                <Button x:Name="btnDefault" Content="Default"  Grid.Row="6" Grid.Column="0" Grid.ColumnSpan="2" Margin="24" Padding="20" FontSize="24" Click="BtnDefault_Click" FontWeight="Bold" Foreground="LightGray" Background="#FFE2FBE2" IsEnabled="False" IsEnabledChanged="BtnDefault_IsEnabledChanged"/>
 
+                <Grid Grid.Column="0" Grid.Row="10" Grid.ColumnSpan="2" VerticalAlignment="Bottom" HorizontalAlignment="Center"  >
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <Button x:Name="btnVynechat" Content="VYNECHAT" Margin="10" Padding="10" Grid.Column="0" HorizontalAlignment="Stretch" FontWeight="Bold"/>
+                    <Button x:Name="btnNenalezeno" Content="NENALEZENO" Margin="10" Padding="10" Grid.Column="1" HorizontalAlignment="Stretch" FontWeight="Bold"/>
+                    <Button x:Name="btnObsazeno" Content="OBSAZENO" Margin="10" Padding="10" Grid.Column="2" HorizontalAlignment="Stretch" FontWeight="Bold"/>
+                    <Button x:Name="btnChyba" Content="CHYBA" Margin="10" Padding="10" Grid.Column="3" HorizontalAlignment="Stretch" FontWeight="Bold"/>
+                </Grid>
             </Grid>
         </Grid>
     </DockPanel>

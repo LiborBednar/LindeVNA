@@ -4,6 +4,8 @@
              xmlns:local="clr-namespace:LindeVNA"
              StartupUri="LoginWindow.xaml">
     <Application.Resources>
-         
+        <Style x:Key="VNAStyle" TargetType="{x:Type Control}">
+            <Setter Property="FontSize" Value="16" />
+        </Style>
     </Application.Resources>
 </Application>

@@ -81,7 +81,7 @@ namespace LindeVNA
                 string profil = "";
                 if (profilComboBox.SelectedIndex >= 0)
                     profil = profilComboBox.SelectedItem.ToString();
-                string heslo = hesloTextBox.Text;
+                string heslo = hesloTextBox.Password;
 
                 if (String.IsNullOrWhiteSpace(login))
                     throw new ApplicationException("Login musí být zadán");
@@ -137,6 +137,35 @@ namespace LindeVNA
                 catch { }
             }
         }
+    }
+
+    public class Connection : Object
+    {
+        string Name;
+        string Url;
+        string Login;
+        string Password;
+        string Language;
+
+        bool RememberLogin;
+        bool RememberPassword;
+
+        public Connection(string name, string url, string login, string password, string language, bool rememberLogin, bool rememberPassword)
+        {
+            Name = name;
+            Url = url;
+            RememberLogin = rememberLogin;
+            if (RememberLogin)
+                Login = login;
+            RememberPassword = rememberPassword;
+            if (RememberPassword)
+                Password = password;
+            Language = language;
+        }
+
+        public Connection(string name, string url) : this(name, url, "", "", "", false, false) { }
+
+
     }
 }
 

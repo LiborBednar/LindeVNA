@@ -64,10 +64,17 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
+    <Compile Include="ConnectionManager.xaml.cs">
+      <DependentUpon>ConnectionManager.xaml</DependentUpon>
+    </Compile>
     <Compile Include="Srv.cs" />
     <Compile Include="TerminalVNA.xaml.cs">
       <DependentUpon>TerminalVNA.xaml</DependentUpon>
     </Compile>
+    <Page Include="ConnectionManager.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
     <Page Include="LoginWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
