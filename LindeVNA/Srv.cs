@@ -39,18 +39,37 @@ namespace LindeVNA
 
     public static class Srv : Object
     {
-        public static string GetSetting(string key)
-        {
-            return ConfigurationManager.AppSettings[key];
-        }
-
-        public static void SetSetting(string key, string value)
+        public static void SetSettings(string key, string value)
         {
             Configuration configuration = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.None);
             configuration.AppSettings.Settings.Remove(key);
             configuration.AppSettings.Settings.Add(key, value);
             configuration.Save(ConfigurationSaveMode.Full, true);
             ConfigurationManager.RefreshSection("appSettings");
+        }
+
+        public static string GetSettings(string key)
+        {
+            string ret = null;
+            if (ConfigurationManager.AppSettings.HasKeys() && ConfigurationManager.AppSettings.AllKeys.Contains<String>(key))
+            {
+                ret = ConfigurationManager.AppSettings[key];
+            }
+            return ret;
+        }
+
+        public static Int32 GetSettings(string key, Int32 defaultValue)
+        {
+            Int32 ret = defaultValue;
+            if (ConfigurationManager.AppSettings.HasKeys() && ConfigurationManager.AppSettings.AllKeys.Contains<String>(key))
+            {
+                try
+                {
+                    ret = Convert.ToInt32(ConfigurationManager.AppSettings[key]);
+                }
+                catch (InvalidCastException) { }
+            }
+            return ret;
         }
     }
 

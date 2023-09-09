@@ -185,7 +185,7 @@ namespace LindeVNA
             set
             {
                 _LastComPort = value;
-                Srv.SetSetting("ComPort", _LastComPort);
+                Srv.SetSettings("ComPort", _LastComPort);
 
                 if (_SerialPort != null)
                     _SerialPort.Dispose();
@@ -196,26 +196,23 @@ namespace LindeVNA
             }
             get
             {
-                if (ConfigurationManager.AppSettings.HasKeys() && ConfigurationManager.AppSettings.AllKeys.Contains<String>("ComPort"))
-                    _LastComPort = ConfigurationManager.AppSettings["ComPort"];
-                return _LastComPort;
+                return Srv.GetSettings("ComPort");
             }
         }
 
-        private int _HeliosVNA;
+        private int? _HeliosVNA = null;
         public int HeliosVNA
         {
             set
             {
                 _HeliosVNA = value;
-                Srv.SetSetting("HeliosVNA", _HeliosVNA.ToString());
+                Srv.SetSettings("HeliosVNA", _HeliosVNA.ToString());
             }
             get
             {
-                _HeliosVNA = 0;
-                if (ConfigurationManager.AppSettings.HasKeys() && ConfigurationManager.AppSettings.AllKeys.Contains<String>("HeliosVNA"))
-                    _HeliosVNA = Convert.ToInt32(ConfigurationManager.AppSettings["HeliosVNA"]);
-                return _HeliosVNA;
+                if (!_HeliosVNA.HasValue)
+                    _HeliosVNA = Srv.GetSettings("HeliosVNA", 0);
+                return _HeliosVNA.Value;
             }
         }
 
@@ -225,7 +222,7 @@ namespace LindeVNA
             set
             {
                 _SynchroID = value;
-                Srv.SetSetting("SynchroID", _SynchroID);
+                Srv.SetSettings("SynchroID", _SynchroID);
             }
             get
             {
@@ -416,6 +413,7 @@ namespace LindeVNA
                     lblAktualniPoziceVal.Content = AktualniPozice;
                     lblOdkudVal.Content = table.Rows[0]["odkud"].ToString();
                     lblKamVal.Content = table.Rows[0]["kam"].ToString();
+                    lblBaleniVal.Content = table.Rows[0]["sarze_refer"].ToString();
                     lblPrioritaVal.Content = table.Rows[0]["priorita"].ToString();
                     lblStavUkolu.Foreground = Brushes.Green;
 
@@ -581,7 +579,6 @@ namespace LindeVNA
             if (delka != telegram.Length)
                 throw new ApplicationException("Deklarovaná délka telegramu neodpovídá jeho skutečné délce.");
             string command = telegram.Substring(3, 1);
-            string akce;
             string[] split;
 
             string currentArea = "";
@@ -696,7 +693,7 @@ namespace LindeVNA
             if (!String.IsNullOrEmpty(currentArea))
             {
 
-                currentLevel = (Convert.ToUInt32(currentLevel) - 1).ToString("00");
+                //currentLevel = (Convert.ToUInt32(currentLevel) - 1).ToString("00");
 
                 string s = currentRow + "-" + currentLevel + "-" + currentLocation;
                 CurrentPosition = currentArea + " " + s;
@@ -727,7 +724,7 @@ namespace LindeVNA
                         inputTable.AddColumn("vozik", typeof(int));
                         int row = inputTable.AddRow();
                         inputTable.SetItem(0, "command_key", "odhlaseni_voziku");
-                        inputTable.SetItem(0, "vozik", _HeliosVNA);
+                        inputTable.SetItem(0, "vozik", HeliosVNA);
                         try
                         {
                             RunFunctionResponse response = _VnaClientRequest(inputTable);
@@ -893,7 +890,7 @@ namespace LindeVNA
 
         private void CbxHeliosVNA_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            if (_HeliosVNA == 0 && cbxHeliosVNA.SelectedValue != null)
+            if (HeliosVNA == 0 && cbxHeliosVNA.SelectedValue != null)
             {
                 Int32 vozik = (Int32)cbxHeliosVNA.SelectedValue;
                 string newSID = DateTime.Now.ToString("yyMMdd") + "-" + Guid.NewGuid();
@@ -960,7 +957,7 @@ namespace LindeVNA
             catch (Exception ex)
             {
                 MessageBox.Show("Chyba při kontrole spárování vozíku v Heliosu: " + ex.Message);
-                _HeliosVNA = 0;
+                HeliosVNA = 0;
                 NactiVozikyProParovani();
             }
         }
@@ -1028,8 +1025,8 @@ namespace LindeVNA
             {
                 oblast = m.Groups["oblast"].Value;
                 rada = m.Groups["rada"].Value;
-                //uroven = m.Groups["uroven"].Value;
-                uroven = (Convert.ToInt32( m.Groups["uroven"].Value) + 1).ToString("00");
+                uroven = m.Groups["uroven"].Value;
+                //uroven = (Convert.ToInt32( m.Groups["uroven"].Value) + 1).ToString("00");
                 regal = m.Groups["regal"].Value;
             }
             else
@@ -1038,30 +1035,35 @@ namespace LindeVNA
 
         private void BtnDefault_Click(object sender, RoutedEventArgs e)
         {
-            InputTable inputTable = new InputTable("InputParams");
-            inputTable.AddColumn("command_key", typeof(string));
-            inputTable.AddColumn("vozik", typeof(int));
-            inputTable.AddColumn("novy_ukol_vna", typeof(int));
-            inputTable.AddColumn("vybrany_ukol_vna", typeof(int));
-            int row = inputTable.AddRow();
-            inputTable.SetItem(0, "command_key", "default_click");
-            inputTable.SetItem(0, "vozik", HeliosVNA);
-            inputTable.SetItem(0, "novy_ukol_vna", NovyUkolVNA);
-            inputTable.SetItem(0, "vybrany_ukol_vna", VybranyUkolVNA);
-            try
+            if (_HandShakeS())
             {
-                _Timer.Stop();
-                RunFunctionResponse response = _VnaClientRequest(inputTable);
-                _NactiUkol();
+                InputTable inputTable = new InputTable("InputParams");
+                inputTable.AddColumn("command_key", typeof(string));
+                inputTable.AddColumn("vozik", typeof(int));
+                inputTable.AddColumn("novy_ukol_vna", typeof(int));
+                inputTable.AddColumn("vybrany_ukol_vna", typeof(int));
+                int row = inputTable.AddRow();
+                inputTable.SetItem(0, "command_key", "default_click");
+                inputTable.SetItem(0, "vozik", HeliosVNA);
+                inputTable.SetItem(0, "novy_ukol_vna", NovyUkolVNA);
+                inputTable.SetItem(0, "vybrany_ukol_vna", VybranyUkolVNA);
+                try
+                {
+                    _Timer.Stop();
+                    RunFunctionResponse response = _VnaClientRequest(inputTable);
+                    _NactiUkol();
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show(ex.Message);
+                }
+                finally
+                {
+                    _Timer.Start();
+                }
             }
-            catch (Exception ex)
-            {
-                MessageBox.Show(ex.Message);
-            }
-            finally
-            {
-                _Timer.Start();
-            }
+            else
+                MessageBox.Show(Status);
         }
 
         private void _PrekresliUkol()
@@ -1085,6 +1087,7 @@ namespace LindeVNA
             Visibility btnChybaVisibility = Visibility.Collapsed;
             Visibility btnNenalezenoVisibility = Visibility.Collapsed;
             Visibility btnVynechatVisibility = Visibility.Collapsed;
+            Visibility btnObsazenoVisibility = Visibility.Collapsed;
 
             if (!String.IsNullOrEmpty(StavUkoluVNA))
             {
@@ -1100,18 +1103,18 @@ namespace LindeVNA
                 lblBaleniValVisibility = Visibility.Visible;
 
                 btnDefaultVisibility = Visibility.Visible;
-                btnChybaVisibility = Visibility.Visible;
+                //btnChybaVisibility = Visibility.Visible;
             }
 
             switch (StavUkoluVNA)
             {
                 case "P": //Plán
-                    btnVynechatVisibility = Visibility.Visible;
+                    //btnVynechatVisibility = Visibility.Visible;
                     break;
                 case "Z": // Zahájeno
                     break;
                 case "N": // Nakládání
-                    btnNenalezenoVisibility = Visibility.Visible;
+                    //btnNenalezenoVisibility = Visibility.Visible;
                     if (lblAktualniPoziceVal.Content.ToString() == lblOdkudVal.Content.ToString())
                     {
                         aktualniPoziceBrush = Brushes.Green;
@@ -1124,7 +1127,7 @@ namespace LindeVNA
                     }
                     break;
                 case "V": // Vykládání
-                    btnNenalezenoVisibility = Visibility.Visible;
+                    //btnObsazenoVisibility = Visibility.Visible;
                     if (lblAktualniPoziceVal.Content.ToString() == lblKamVal.Content.ToString())
                     {
                         aktualniPoziceBrush = Brushes.Green;
@@ -1137,7 +1140,7 @@ namespace LindeVNA
                     }
                     break;
                 case "K": // Kontrola
-                    btnNenalezenoVisibility = Visibility.Visible;
+                    //btnNenalezenoVisibility = Visibility.Visible;
                     break;
             }
 
@@ -1160,7 +1163,7 @@ namespace LindeVNA
             btnChyba.Visibility = btnChybaVisibility;
             btnNenalezeno.Visibility = btnNenalezenoVisibility;
             btnVynechat.Visibility = btnVynechatVisibility;
-
+            btnObsazeno.Visibility = btnObsazenoVisibility;
         }
 
         private void BtnDefault_IsEnabledChanged(object sender, DependencyPropertyChangedEventArgs e)
@@ -1195,15 +1198,14 @@ namespace LindeVNA
             Topmost = false;
         }
 
-        private void TerminalWindow_SizeChanged(object sender, SizeChangedEventArgs e)
-        {
-            Size_X.Content = Width;
-            Size_Y.Content = Height;
-        }
-
         private void BtnUkoncit_Click(object sender, RoutedEventArgs e)
         {
             Close();
+        }
+
+        private void TerminalWindow_SizeChanged(object sender, SizeChangedEventArgs e)
+        {
+
         }
     }
 }

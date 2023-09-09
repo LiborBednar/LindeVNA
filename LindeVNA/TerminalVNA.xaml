@@ -84,16 +84,16 @@
                 <ComboBox x:Name="cbxComPorts" Margin="10,0,10,0" VerticalAlignment="Top" SelectionChanged="CbxComPorts_SelectionChanged"/>
                 <Button x:Name="BtnConnect" Content="Připojit" Click="BtnConnect_Click" Margin="10,20,10,0" Padding="5" VerticalAlignment="Top" FontWeight="Bold"/>
                 <CheckBox x:Name="cbFullScreen" Content="FullScreen" Margin="10,20,10,0" HorizontalAlignment="Center" Unchecked="CbFullScreen_Unchecked" Checked="CbFullScreen_Checked"/>
-                <Label x:Name="Size_X" Content="Label"/>
-                <Label x:Name="Size_Y" Content="Label"/>
             </StackPanel>
             <Button x:Name="BtnUkoncit" Content="Ukončit" Click="BtnUkoncit_Click" Margin="10" Padding="10" VerticalAlignment="Bottom" FontWeight="Bold"/>
             <Grid Grid.Column="2">
                 <DockPanel Grid.Row="0" >
                     <Button x:Name="btnClearTelegramy" Content="Smazat telegramy" DockPanel.Dock="Top" Click="BtnClearTelegramy_Click"/>
-                    <ScrollViewer x:Name="TelegramyScrollViewer" BorderBrush="#FF707070" BorderThickness="1">
-                        <TextBlock x:Name="tbTelegramy" HorizontalAlignment="Stretch" Grid.Row="2" TextWrapping="Wrap" Text="" VerticalAlignment="Stretch" FontSize="13"/>
-                    </ScrollViewer>
+                    <Border BorderThickness="1" BorderBrush="Black" >
+                        <ScrollViewer x:Name="TelegramyScrollViewer">
+                            <TextBlock x:Name="tbTelegramy" HorizontalAlignment="Stretch" Grid.Row="2" TextWrapping="Wrap" Text="" VerticalAlignment="Stretch" FontSize="13" Background="#7FFFFFFF" />
+                        </ScrollViewer>
+                    </Border>
                 </DockPanel>
             </Grid>
             <Grid Grid.Column="1">

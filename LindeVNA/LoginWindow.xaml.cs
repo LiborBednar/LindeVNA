@@ -25,15 +25,32 @@ namespace LindeVNA
     /// </summary>
     public partial class LoginWindow : Window
     {
+        private ConnectionManager _ConnectionManager;
+
         public LoginWindow()
         {
             Globals.Logger = LogManager.GetLogger("file");
-
-
             Globals.Logger.Info("Program started");
             InitializeComponent();
-            AppDomain currentDomain = AppDomain.CurrentDomain;
-            currentDomain.UnhandledException += CurrentDomain_UnhandledException;
+            _ConnectionManager = ConnectionManager.Load();
+            DataContext = _ConnectionManager;
+            if (_ConnectionManager.Connections.Count > 0 && !String.IsNullOrEmpty(_ConnectionManager.ActualConnection))
+            {
+                try
+                {
+                    var c = _ConnectionManager.Connections.First(x => x.Name == _ConnectionManager.ActualConnection);
+                    if (c != null)
+                        prihlasenComboBox.SelectedItem = c;
+                }
+                catch
+                {
+                    prihlasenComboBox.SelectedIndex = 0;
+                }
+            }
+            else
+                _ConnectionManager.ActualConnection = null;
+
+            AppDomain.CurrentDomain.UnhandledException += CurrentDomain_UnhandledException;
         }
 
         private void CurrentDomain_UnhandledException(object sender, UnhandledExceptionEventArgs e)
@@ -49,28 +66,55 @@ namespace LindeVNA
 
         private void urlLabel_MouseDoubleClick(object sender, MouseButtonEventArgs e)
         {
-            profilComboBox.Items.Clear();
-            jazykComboBox.Items.Clear();
-            using (new WaitCursorIndicator(this))
-                try
+            Connect();
+        }
+
+        private void Connect()
+        {
+            Connection c = prihlasenComboBox.SelectedItem as Connection;
+            if (c != null)
+            {
+                using (new WaitCursorIndicator(this))
                 {
-                    Globals.SgConnector = ServiceGateConnector.Create(((Label)sender).Content.ToString());
-                    if (Globals.SgConnector != null)
+                    try
                     {
-                        foreach (DbProfile p in Globals.SgConnector.DbProfiles)
-                            profilComboBox.Items.Add(p.ProfileName);
-                        foreach (LanguageInfo l in Globals.SgConnector.Languages)
-                            jazykComboBox.Items.Add(l.Code);
+                        Globals.SgConnector = ServiceGateConnector.Create(c.Url);
+                        profilComboBox.Items.Clear();
+                        jazykComboBox.Items.Clear();
+                        if (Globals.SgConnector != null)
+                        {
+                            foreach (DbProfile p in Globals.SgConnector.DbProfiles)
+                                profilComboBox.Items.Add(p.ProfileName);
+                            foreach (LanguageInfo l in Globals.SgConnector.Languages)
+                                jazykComboBox.Items.Add(l.Code);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show("Chyba: " + ex.ToString(), ex.Message);
+                    }
+                    finally
+                    {
                     }
                 }
-                catch (Exception ex)
-                {
-                    MessageBox.Show("Chyba: " + ex.Message.ToString());
-                }
-            if (profilComboBox.SelectedIndex < 0)
-                profilComboBox.SelectedIndex = 0;
-            if (jazykComboBox.SelectedIndex < 0)
-                jazykComboBox.SelectedIndex = 0;
+
+                profilComboBox.SelectedIndex = profilComboBox.Items.IndexOf(c.Profil);
+                jazykComboBox.SelectedIndex = jazykComboBox.Items.IndexOf(c.Language);
+                if (c.RememberPassword)
+                    hesloTextBox.Password = c.Password;
+
+                if (profilComboBox.SelectedIndex < 0)
+                    profilComboBox.SelectedIndex = 0;
+                if (jazykComboBox.SelectedIndex < 0)
+                    jazykComboBox.SelectedIndex = 0;
+
+                if (String.IsNullOrEmpty(loginTextBox.Text))
+                    loginTextBox.Focus();
+                else if (String.IsNullOrEmpty(hesloTextBox.Password))
+                    hesloTextBox.Focus();
+                else
+                    prihlasitButton.Focus();
+            }
         }
 
         private void PrihlasitButton_Click(object sender, RoutedEventArgs e)
@@ -109,6 +153,18 @@ namespace LindeVNA
 
             if (Globals.SgConnector != null && Globals.SgConnector.LoggedOn)
             {
+                Connection c = prihlasenComboBox.SelectedItem as Connection;
+                if (c != null)
+                {
+                    c.Profil = profilComboBox.SelectedItem.ToString();
+                    c.Language = jazykComboBox.SelectedItem.ToString();
+                    if (RememberPasswordCheckBox.IsChecked ?? false)
+                        c.Password = hesloTextBox.Password;
+                    else
+                        hesloTextBox.Password = null;
+                    _ConnectionManager.Save();
+                }
+
                 TerminalVNA terminal = null;
                 try
                 {
@@ -137,34 +193,19 @@ namespace LindeVNA
                 catch { }
             }
         }
-    }
 
-    public class Connection : Object
-    {
-        string Name;
-        string Url;
-        string Login;
-        string Password;
-        string Language;
-
-        bool RememberLogin;
-        bool RememberPassword;
-
-        public Connection(string name, string url, string login, string password, string language, bool rememberLogin, bool rememberPassword)
+        private void Button_Click(object sender, RoutedEventArgs e)
         {
-            Name = name;
-            Url = url;
-            RememberLogin = rememberLogin;
-            if (RememberLogin)
-                Login = login;
-            RememberPassword = rememberPassword;
-            if (RememberPassword)
-                Password = password;
-            Language = language;
+            ConnectionManagerWindow cm = new ConnectionManagerWindow(_ConnectionManager);
+            cm.ShowDialog();
         }
 
-        public Connection(string name, string url) : this(name, url, "", "", "", false, false) { }
-
+        private void PrihlasenComboBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (profilComboBox.SelectedItem != null)
+                _ConnectionManager.ActualConnection = prihlasenComboBox.SelectedItem.ToString();
+            Connect();
+        }
 
     }
 }

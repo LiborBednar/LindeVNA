@@ -10,7 +10,7 @@ using System.Windows;
 [assembly: AssemblyTitle("LindeVNA")]
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("")]
+[assembly: AssemblyCompany("Gatema")]
 [assembly: AssemblyProduct("LindeVNA")]
 [assembly: AssemblyCopyright("Copyright ©  2023")]
 [assembly: AssemblyTrademark("")]
