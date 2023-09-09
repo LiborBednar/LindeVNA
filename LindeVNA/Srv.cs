@@ -1,4 +1,5 @@
 ﻿using System;
+using System.IO;
 using System.Collections.Generic;
 using System.Configuration;
 using System.Linq;
@@ -35,7 +36,7 @@ namespace LindeVNA
             if (this.Onwer == null) return;
             this.Onwer.Cursor = Previous;
         }
-    } 
+    }
 
     public static class Srv : Object
     {
@@ -70,6 +71,19 @@ namespace LindeVNA
                 catch (InvalidCastException) { }
             }
             return ret;
+        }
+
+        public static string LocalApplicationDataPath()
+        {
+            System.Reflection.AssemblyCompanyAttribute companyAttribute = (System.Reflection.AssemblyCompanyAttribute)System.Reflection.AssemblyCompanyAttribute.GetCustomAttribute(System.Reflection.Assembly.GetExecutingAssembly(), typeof(System.Reflection.AssemblyCompanyAttribute));
+            string sCompanyName = companyAttribute.Company;
+            string sProductName = System.Reflection.Assembly.GetExecutingAssembly().GetName().Name.ToString();
+
+            string path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), sCompanyName, sProductName);
+
+            if (!Directory.Exists(path))
+                Directory.CreateDirectory(path);
+            return path;
         }
     }
 

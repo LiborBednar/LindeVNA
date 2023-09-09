@@ -36,15 +36,7 @@ namespace LindeVNA
 
         private static string GetConfigPath()
         {
-            System.Reflection.AssemblyCompanyAttribute companyAttribute = (System.Reflection.AssemblyCompanyAttribute)System.Reflection.AssemblyCompanyAttribute.GetCustomAttribute(System.Reflection.Assembly.GetExecutingAssembly(), typeof(System.Reflection.AssemblyCompanyAttribute));
-            string sCompanyName = companyAttribute.Company;
-            string sProductName = System.Reflection.Assembly.GetExecutingAssembly().GetName().Name.ToString();
-
-            string path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), sCompanyName, sProductName);
-
-            if (!Directory.Exists(path))
-                Directory.CreateDirectory(path);
-            return Path.Combine(path, "connection.config");
+            return Path.Combine(Srv.LocalApplicationDataPath(), "connections.config");
         }
 
 

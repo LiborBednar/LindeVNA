@@ -29,6 +29,7 @@ namespace LindeVNA
 
         public LoginWindow()
         {
+            LogManager.Configuration.Variables["LogDir"] = Srv.LocalApplicationDataPath();
             Globals.Logger = LogManager.GetLogger("file");
             Globals.Logger.Info("Program started");
             InitializeComponent();
