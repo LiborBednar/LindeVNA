@@ -219,16 +219,14 @@ namespace LindeVNA
         private string _SynchroID;
         public string SynchroID
         {
-            set
-            {
-                _SynchroID = value;
-                Srv.SetSettings("SynchroID", _SynchroID);
-            }
             get
             {
                 _SynchroID = "";
                 if (ConfigurationManager.AppSettings.HasKeys() && ConfigurationManager.AppSettings.AllKeys.Contains<String>("SynchroID"))
                     _SynchroID = ConfigurationManager.AppSettings["SynchroID"].ToString();
+                if (String.IsNullOrEmpty(_SynchroID))
+                    _SynchroID = DateTime.Now.ToString("yyMMdd") + "-" + Guid.NewGuid();
+                Srv.SetSettings("SynchroID", _SynchroID);
                 return _SynchroID;
             }
         }
@@ -390,16 +388,26 @@ namespace LindeVNA
             }
             else
             {
-                BrowseRequest request = new BrowseRequest(22567, new BrowseId(BrowseType.Template, 22645));
-                request.Bounds.LowerBound = 1;
-                request.Bounds.UpperBound = 1;
-                request.BaseFilterArguments = new FilterArgumentList();
-                request.BaseFilterArguments.Add("aktualni_pozice", AktualniPozice.Substring(2));
-                request.BaseFilterArguments.Add("vna_vozik", HeliosVNA);
-                BrowseResponse response = request.Process(Globals.SgConnector);
-                DataTable table = response.Data.MainTable;
+                DataTable table = null;
+                try
+                {
+                    BrowseRequest request = new BrowseRequest(22567, new BrowseId(BrowseType.Template, 22645));
+                    request.Bounds.LowerBound = 1;
+                    request.Bounds.UpperBound = 10;
+                    request.BaseFilterArguments = new FilterArgumentList();
+                    request.BaseFilterArguments.Add("aktualni_pozice", AktualniPozice.Substring(2));
+                    request.BaseFilterArguments.Add("vna_vozik", HeliosVNA);
+                    BrowseResponse response = request.Process(Globals.SgConnector);
+                    table = response.Data.MainTable;
+                }
+                catch { }
 
-                if (table.Rows.Count == 0)
+                if (table == null)
+                {
+                    lblStavUkolu.Content = "Nepodařilo se načíst úkol";
+                    lblStavUkolu.Foreground = Brushes.Red;
+                }
+                else if (table.Rows.Count == 0)
                 {
                     lblStavUkolu.Content = "Seznam úkolů je prázdný";
                     lblStavUkolu.Foreground = Brushes.Red;
@@ -471,6 +479,30 @@ namespace LindeVNA
                             break;
                     }
                 }
+
+                tbUkoly.Inlines.Clear();
+                for (int i = 0; i < table.Rows.Count; i++)
+                {
+                    Brush foreground = Brushes.DarkViolet;
+                    FontStyle fontStyle = FontStyles.Normal;
+                    FontWeight fontWeight = FontWeights.Normal; 
+
+                    if (table.Rows[i]["typ_operace_vna"].ToString() == "V")
+                        foreground = Brushes.DarkBlue;
+                    if (table.Rows[i]["vynechano"].ToString() != "0")
+                        fontStyle = FontStyles.Italic;
+                    if (VybranyUkolVNA == (Int32)table.Rows[i]["vna_ukol"])
+                        fontWeight = FontWeights.Bold;
+
+                    Run header = new Run((i + 1).ToString() + ": " + table.Rows[i]["typ_operace_vna_es"].ToString() + ": " + table.Rows[i]["stav_ukolu_vna_es"].ToString() + "\r\n");
+                    header.Foreground = foreground;
+                    header.FontStyle = fontStyle;
+                    header.FontWeight = fontWeight;
+
+                    tbUkoly.Inlines.Add(header);
+                    tbUkoly.Inlines.Add(new Run(table.Rows[i]["odkud"].ToString() + " ---> " + table.Rows[i]["kam"].ToString() + "\r\n\r\n") { });
+                }
+                UkolyScrollViewer.ScrollToHome();
             }
             StavUkoluVNA = stavUkoluVna;
             _PrekresliUkol();
@@ -589,7 +621,7 @@ namespace LindeVNA
 
             switch (command)
             {
-                case "p":
+                case "p": //dosažení pozice
                     split = _SplitSC(telegram);
                     if (split.Length != 5)
                         throw new ApplicationException("Chybný formát status telegramu.");
@@ -601,7 +633,7 @@ namespace LindeVNA
 
                     Operation = telegram.Substring(4, 1);
                     break;
-                case "a":
+                case "a": //naloženo /vyloženo
                     split = _SplitSC(telegram);
                     if (split.Length != 5)
                         throw new ApplicationException("Chybný formát status telegramu.");
@@ -796,6 +828,8 @@ namespace LindeVNA
                     cbxComPorts.IsEnabled = false;
                     if (!_HandShakeS())
                         MessageBox.Show(Status);
+                    if (!_HandShakeB())
+                        MessageBox.Show(Status);
                 }
                 else
                 {
@@ -893,49 +927,25 @@ namespace LindeVNA
             if (HeliosVNA == 0 && cbxHeliosVNA.SelectedValue != null)
             {
                 Int32 vozik = (Int32)cbxHeliosVNA.SelectedValue;
-                string newSID = DateTime.Now.ToString("yyMMdd") + "-" + Guid.NewGuid();
-
-                InputTable inputTable = new InputTable("InputParams");
-                inputTable.AddColumn("command_key", typeof(string));
-                inputTable.AddColumn("vozik", typeof(int));
-                inputTable.AddColumn("new_sid", typeof(string));
-                int row = inputTable.AddRow();
-                inputTable.SetItem(0, "command_key", "sparuj_vna_vozik");
-                inputTable.SetItem(0, "vozik", vozik);
-                inputTable.SetItem(0, "new_sid", newSID);
-                try
-                {
-                    RunFunctionResponse response = _VnaClientRequest(inputTable);
-                    _KontrolaSparovani(vozik, newSID);
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show("Nepodařilo se zjistit spárování vozíku v Heliosu: " + ex.Message);
-                }
+                _KontrolaSparovani(vozik, SynchroID);
             }
         }
 
         private void _KontrolaSparovani(int vozik, string sid)
         {
-            string newSID = DateTime.Now.ToString("yyMMdd") + "-" + Guid.NewGuid();
-
             InputTable inputTable = new InputTable("InputParams");
             inputTable.AddColumn("command_key", typeof(string));
             inputTable.AddColumn("vozik", typeof(int));
-            inputTable.AddColumn("old_sid", typeof(string));
             inputTable.AddColumn("new_sid", typeof(string));
             int row = inputTable.AddRow();
             inputTable.SetItem(0, "command_key", "kontrola_sparovani");
             inputTable.SetItem(0, "vozik", vozik);
-            inputTable.SetItem(0, "old_sid", sid);
-            inputTable.SetItem(0, "new_sid", newSID);
+            inputTable.SetItem(0, "new_sid", sid);
             try
             {
                 RunFunctionResponse response = _VnaClientRequest(inputTable);
-
-                //Uložení do konfigurace
                 HeliosVNA = vozik;
-                SynchroID = newSID;
+
                 cbxHeliosVNA.ItemsSource = response.OutputParams.Table.DefaultView;
                 cbxHeliosVNA.DisplayMemberPath = "vna_refer";
                 cbxHeliosVNA.SelectedValuePath = "vna";
@@ -956,7 +966,7 @@ namespace LindeVNA
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Chyba při kontrole spárování vozíku v Heliosu: " + ex.Message);
+                MessageBox.Show("Chyba spárování vozíku v Heliosu: " + ex.Message);
                 HeliosVNA = 0;
                 NactiVozikyProParovani();
             }
@@ -1087,6 +1097,7 @@ namespace LindeVNA
             Visibility btnChybaVisibility = Visibility.Collapsed;
             Visibility btnNenalezenoVisibility = Visibility.Collapsed;
             Visibility btnVynechatVisibility = Visibility.Collapsed;
+            Visibility btnZrusitVisibility = Visibility.Collapsed;
             Visibility btnObsazenoVisibility = Visibility.Collapsed;
 
             if (!String.IsNullOrEmpty(StavUkoluVNA))
@@ -1103,18 +1114,20 @@ namespace LindeVNA
                 lblBaleniValVisibility = Visibility.Visible;
 
                 btnDefaultVisibility = Visibility.Visible;
-                //btnChybaVisibility = Visibility.Visible;
+                btnChybaVisibility = Visibility.Visible;
             }
 
             switch (StavUkoluVNA)
             {
                 case "P": //Plán
-                    //btnVynechatVisibility = Visibility.Visible;
+                    btnVynechatVisibility = Visibility.Visible;
+                    btnChybaVisibility = Visibility.Collapsed;
                     break;
                 case "Z": // Zahájeno
                     break;
                 case "N": // Nakládání
                     //btnNenalezenoVisibility = Visibility.Visible;
+                    btnZrusitVisibility = Visibility.Visible;
                     if (lblAktualniPoziceVal.Content.ToString() == lblOdkudVal.Content.ToString())
                     {
                         aktualniPoziceBrush = Brushes.Green;
@@ -1163,6 +1176,7 @@ namespace LindeVNA
             btnChyba.Visibility = btnChybaVisibility;
             btnNenalezeno.Visibility = btnNenalezenoVisibility;
             btnVynechat.Visibility = btnVynechatVisibility;
+            btnZrusit.Visibility = btnZrusitVisibility;
             btnObsazeno.Visibility = btnObsazenoVisibility;
         }
 
@@ -1206,6 +1220,96 @@ namespace LindeVNA
         private void TerminalWindow_SizeChanged(object sender, SizeChangedEventArgs e)
         {
 
+        }
+
+        private void BtnChyba_Click(object sender, RoutedEventArgs e)
+        {
+            MessageBoxResult result = MessageBox.Show("Opravdu chcete aktuální úkol ukončit chybovým stavem?", "Dotaz", MessageBoxButton.YesNo);
+            if (result == MessageBoxResult.Yes)
+            {
+                InputTable inputTable = new InputTable("InputParams");
+                inputTable.AddColumn("command_key", typeof(string));
+                inputTable.AddColumn("vozik", typeof(int));
+                inputTable.AddColumn("vybrany_ukol_vna", typeof(int));
+                int row = inputTable.AddRow();
+                inputTable.SetItem(0, "command_key", "chyba_click");
+                inputTable.SetItem(0, "vozik", HeliosVNA);
+                inputTable.SetItem(0, "vybrany_ukol_vna", VybranyUkolVNA);
+                try
+                {
+                    _Timer.Stop();
+                    RunFunctionResponse response = _VnaClientRequest(inputTable);
+                    _NactiUkol();
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show(ex.Message);
+                }
+                finally
+                {
+                    _Timer.Start();
+                }
+            }
+        }
+
+        private void BtnZrusit_Click(object sender, RoutedEventArgs e)
+        {
+            MessageBoxResult result = MessageBox.Show("Opravdu chcete zrušit aktuální úkol?", "Dotaz", MessageBoxButton.YesNo);
+            if (result == MessageBoxResult.Yes)
+            {
+                InputTable inputTable = new InputTable("InputParams");
+                inputTable.AddColumn("command_key", typeof(string));
+                inputTable.AddColumn("vozik", typeof(int));
+                inputTable.AddColumn("vybrany_ukol_vna", typeof(int));
+                int row = inputTable.AddRow();
+                inputTable.SetItem(0, "command_key", "zrusit_click");
+                inputTable.SetItem(0, "vozik", HeliosVNA);
+                inputTable.SetItem(0, "vybrany_ukol_vna", VybranyUkolVNA);
+                try
+                {
+                    _Timer.Stop();
+                    RunFunctionResponse response = _VnaClientRequest(inputTable);
+                    _NactiUkol();
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show(ex.Message);
+                }
+                finally
+                {
+                    _Timer.Start();
+                }
+            }
+        }
+
+        private void BtnVynechat_Click(object sender, RoutedEventArgs e)
+        {
+            MessageBoxResult result = MessageBox.Show("Opravdu chcete vynechat aktuální úkol?", "Dotaz", MessageBoxButton.YesNo);
+            if (result == MessageBoxResult.Yes)
+            {
+                InputTable inputTable = new InputTable("InputParams");
+                inputTable.AddColumn("command_key", typeof(string));
+                inputTable.AddColumn("vozik", typeof(int));
+                inputTable.AddColumn("novy_ukol_vna", typeof(int));
+                int row = inputTable.AddRow();
+                inputTable.SetItem(0, "command_key", "vynechat_click");
+                inputTable.SetItem(0, "vozik", HeliosVNA);
+                inputTable.SetItem(0, "novy_ukol_vna", NovyUkolVNA);
+                try
+                {
+                    _Timer.Stop();
+                    RunFunctionResponse response = _VnaClientRequest(inputTable);
+                    _NactiUkol();
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show(ex.Message);
+                }
+                finally
+                {
+                    _Timer.Start();
+                }
+            }
         }
     }
 }
