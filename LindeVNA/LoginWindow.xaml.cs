@@ -32,7 +32,11 @@ namespace LindeVNA
             LogManager.Configuration.Variables["LogDir"] = Srv.LocalApplicationDataPath();
             Globals.Logger = LogManager.GetLogger("file");
             Globals.Logger.Info("Program started");
+            AppDomain.CurrentDomain.UnhandledException += CurrentDomain_UnhandledException;
+
             InitializeComponent();
+            Title = "Linde VNA klient v. " + Srv.GetRunningVersion();
+
             _ConnectionManager = ConnectionManager.Load();
             DataContext = _ConnectionManager;
             if (_ConnectionManager.Connections.Count > 0 && !String.IsNullOrEmpty(_ConnectionManager.ActualConnection))
@@ -50,8 +54,6 @@ namespace LindeVNA
             }
             else
                 _ConnectionManager.ActualConnection = null;
-
-            AppDomain.CurrentDomain.UnhandledException += CurrentDomain_UnhandledException;
         }
 
         private void CurrentDomain_UnhandledException(object sender, UnhandledExceptionEventArgs e)
@@ -195,7 +197,7 @@ namespace LindeVNA
             }
         }
 
-        private void Button_Click(object sender, RoutedEventArgs e)
+        private void PripojeniButton_Click(object sender, RoutedEventArgs e)
         {
             ConnectionManagerWindow cm = new ConnectionManagerWindow(_ConnectionManager);
             cm.ShowDialog();

@@ -48,7 +48,7 @@
             <TextBox x:Name="loginTextBox" DataContext="{Binding ElementName=prihlasenComboBox, Path=SelectedItem}" Text="{Binding Login}" Grid.Column="1" Grid.Row="3" TextWrapping="Wrap" VerticalAlignment="Center" HorizontalContentAlignment="Left" FontSize="16" Height="27"/>
             <PasswordBox x:Name="hesloTextBox" Grid.Column="1" Grid.Row="4" VerticalAlignment="Center" HorizontalContentAlignment="Left" FontSize="16" Height="27" />
             <Button x:Name="prihlasitButton" Content="Přihlásit" HorizontalAlignment="Stretch" Grid.Row="7" VerticalAlignment="Stretch" Grid.ColumnSpan="3" FontSize="28" Padding="10" Margin="20" Click="PrihlasitButton_Click" FontWeight="Bold"/>
-            <Button Content=" ... " Grid.Column="2" HorizontalAlignment="Center" Grid.Row="1" VerticalAlignment="Center" Click="Button_Click"/>
+            <Button x:Name="pripojeniButton" Content=" ... " Grid.Column="2" HorizontalAlignment="Center" Grid.Row="1" VerticalAlignment="Center" Click="PripojeniButton_Click"/>
             <!--CheckBox DataContext="{Binding ElementName=prihlasenComboBox, Path=SelectedItem}" IsChecked="{Binding RememberLogin}" Grid.Column="2" HorizontalAlignment="Center" Grid.Row="3" VerticalAlignment="Center"/-->
             <CheckBox x:Name="RememberPasswordCheckBox" DataContext="{Binding ElementName=prihlasenComboBox, Path=SelectedItem}" IsChecked="{Binding RememberPassword}" Grid.Column="2" HorizontalAlignment="Center" Grid.Row="4" VerticalAlignment="Center"/>
         </Grid>

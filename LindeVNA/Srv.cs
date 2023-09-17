@@ -6,6 +6,9 @@ using System.Linq;
 using System.Data;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Deployment.Application;
+using System.Reflection;
+
 using IDisposable = System.IDisposable;
 using FrameworkElement = System.Windows.FrameworkElement;
 using Cursor = System.Windows.Input.Cursor;
@@ -40,38 +43,64 @@ namespace LindeVNA
 
     public static class Srv : Object
     {
-        public static void SetSettings(string key, string value)
+        public static void UpdateSettings()
         {
-            Configuration configuration = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.None);
-            configuration.AppSettings.Settings.Remove(key);
-            configuration.AppSettings.Settings.Add(key, value);
-            configuration.Save(ConfigurationSaveMode.Full, true);
-            ConfigurationManager.RefreshSection("appSettings");
+            if (Properties.Settings.Default.UpgradeSettings)
+            {
+                Properties.Settings.Default.Upgrade();
+                Properties.Settings.Default.UpgradeSettings = false;
+                Properties.Settings.Default.Save();
+            }
         }
 
-        public static string GetSettings(string key)
-        {
-            string ret = null;
-            if (ConfigurationManager.AppSettings.HasKeys() && ConfigurationManager.AppSettings.AllKeys.Contains<String>(key))
-            {
-                ret = ConfigurationManager.AppSettings[key];
-            }
-            return ret;
-        }
+        //public static void SetSettings(string key, object value)
+        //{
+        //    Configuration configuration = ConfigurationManager.OpenExeConfiguration(ConfigurationUserLevel.None);
+        //    MessageBox.Show(configuration.FilePath);
+        //    configuration.AppSettings.Settings.Remove(key);
+        //    configuration.AppSettings.Settings.Add(key, value.ToString());
+        //    configuration.Save(ConfigurationSaveMode.Full, true);
+        //    ConfigurationManager.RefreshSection("appSettings");
+        //}
 
-        public static Int32 GetSettings(string key, Int32 defaultValue)
-        {
-            Int32 ret = defaultValue;
-            if (ConfigurationManager.AppSettings.HasKeys() && ConfigurationManager.AppSettings.AllKeys.Contains<String>(key))
-            {
-                try
-                {
-                    ret = Convert.ToInt32(ConfigurationManager.AppSettings[key]);
-                }
-                catch (InvalidCastException) { }
-            }
-            return ret;
-        }
+        //public static string GetSettings(string key)
+        //{
+        //    string ret = null;
+        //    if (ConfigurationManager.AppSettings.HasKeys() && ConfigurationManager.AppSettings.AllKeys.Contains<String>(key))
+        //    {
+        //        ret = ConfigurationManager.AppSettings[key];
+        //    }
+        //    return ret;
+        //}
+
+        //public static Int32 GetSettings(string key, Int32 defaultValue)
+        //{
+        //    Int32 ret = defaultValue;
+        //    if (ConfigurationManager.AppSettings.HasKeys() && ConfigurationManager.AppSettings.AllKeys.Contains<String>(key))
+        //    {
+        //        try
+        //        {
+        //            ret = Convert.ToInt32(ConfigurationManager.AppSettings[key]);
+        //        }
+        //        catch (InvalidCastException) { }
+        //    }
+        //    return ret;
+        //}
+
+        //public static bool GetSettings(string key, bool defaultValue)
+        //{
+        //    bool ret = defaultValue;
+        //    if (ConfigurationManager.AppSettings.HasKeys() && ConfigurationManager.AppSettings.AllKeys.Contains<String>(key))
+        //    {
+        //        try
+        //        {
+        //            ret = Convert.ToBoolean(ConfigurationManager.AppSettings[key]);
+        //        }
+        //        catch (InvalidCastException) { }
+        //    }
+        //    return ret;
+        //}
+
 
         public static string LocalApplicationDataPath()
         {
@@ -84,6 +113,18 @@ namespace LindeVNA
             if (!Directory.Exists(path))
                 Directory.CreateDirectory(path);
             return path;
+        }
+
+        public static Version GetRunningVersion()
+        {
+            try
+            {
+                return ApplicationDeployment.CurrentDeployment.CurrentVersion;
+            }
+            catch (Exception)
+            {
+                return Assembly.GetExecutingAssembly().GetName().Version;
+            }
         }
     }
 

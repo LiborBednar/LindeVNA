@@ -185,8 +185,9 @@ namespace LindeVNA
             set
             {
                 _LastComPort = value;
-                Srv.SetSettings("ComPort", _LastComPort);
-
+                //Srv.SetSettings("ComPort", _LastComPort);
+                Properties.Settings.Default.ComPort = _LastComPort;
+                Properties.Settings.Default.Save();
                 if (_SerialPort != null)
                     _SerialPort.Dispose();
                 _SerialPort = new SerialPort(_LastComPort, 9600, Parity.None, 8, StopBits.One);
@@ -196,23 +197,62 @@ namespace LindeVNA
             }
             get
             {
-                return Srv.GetSettings("ComPort");
+                //return Srv.GetSettings("ComPort");
+                return Properties.Settings.Default.ComPort;
             }
         }
 
-        private int? _HeliosVNA = null;
+        private bool _FullScreen;
+        public bool FullScreen
+        {
+            set
+            {
+                _FullScreen = value;
+                //Srv.SetSettings("FullScreen", _FullScreen);
+                Properties.Settings.Default.FullScreen = _FullScreen;
+                Properties.Settings.Default.Save();
+
+                if (_FullScreen)
+                {
+                    Visibility = Visibility.Collapsed;
+                    WindowStyle = WindowStyle.None;
+                    ResizeMode = ResizeMode.NoResize;
+                    WindowState = WindowState.Maximized;
+                    Topmost = true;
+                    Visibility = Visibility.Visible;
+                }
+                else
+                {
+
+                    WindowStyle = WindowStyle.SingleBorderWindow;
+                    ResizeMode = ResizeMode.CanResize;
+                    Topmost = false;
+                }
+            }
+            get
+            {
+                //return Srv.GetSettings("FullScreen", false);
+                return Properties.Settings.Default.FullScreen;
+            }
+        }
+
+        private int _HeliosVNA = 0;
         public int HeliosVNA
         {
             set
             {
                 _HeliosVNA = value;
-                Srv.SetSettings("HeliosVNA", _HeliosVNA.ToString());
+                //Srv.SetSettings("HeliosVNA", _HeliosVNA.ToString());
+                Properties.Settings.Default.HeliosVNA = _HeliosVNA;
+                Properties.Settings.Default.Save();
+
             }
             get
             {
-                if (!_HeliosVNA.HasValue)
-                    _HeliosVNA = Srv.GetSettings("HeliosVNA", 0);
-                return _HeliosVNA.Value;
+                //if (!_HeliosVNA.HasValue)
+                //    _HeliosVNA = Srv.GetSettings("HeliosVNA", 0);
+                //return _HeliosVNA.Value;
+                return Properties.Settings.Default.HeliosVNA;
             }
         }
 
@@ -221,12 +261,15 @@ namespace LindeVNA
         {
             get
             {
-                _SynchroID = "";
-                if (ConfigurationManager.AppSettings.HasKeys() && ConfigurationManager.AppSettings.AllKeys.Contains<String>("SynchroID"))
-                    _SynchroID = ConfigurationManager.AppSettings["SynchroID"].ToString();
+                _SynchroID = Properties.Settings.Default.SynchroID;
+                //if (ConfigurationManager.AppSettings.HasKeys() && ConfigurationManager.AppSettings.AllKeys.Contains<String>("SynchroID"))
+                //    _SynchroID = ConfigurationManager.AppSettings["SynchroID"].ToString();
+
                 if (String.IsNullOrEmpty(_SynchroID))
                     _SynchroID = DateTime.Now.ToString("yyMMdd") + "-" + Guid.NewGuid();
-                Srv.SetSettings("SynchroID", _SynchroID);
+                //Srv.SetSettings("SynchroID", _SynchroID);
+                Properties.Settings.Default.SynchroID = _SynchroID;
+                Properties.Settings.Default.Save();
                 return _SynchroID;
             }
         }
@@ -330,6 +373,8 @@ namespace LindeVNA
 
             if (Globals.SgConnector.LogOnInfo.DbProfile.ToUpper().Contains("TEST"))
                 Background = Brushes.LightPink;
+
+            cbFullScreen.IsChecked = FullScreen;
 
             foreach (string s in SerialPort.GetPortNames())
                 cbxComPorts.Items.Add(s);
@@ -485,7 +530,7 @@ namespace LindeVNA
                 {
                     Brush foreground = Brushes.DarkViolet;
                     FontStyle fontStyle = FontStyles.Normal;
-                    FontWeight fontWeight = FontWeights.Normal; 
+                    FontWeight fontWeight = FontWeights.Normal;
 
                     if (table.Rows[i]["typ_operace_vna"].ToString() == "V")
                         foreground = Brushes.DarkBlue;
@@ -742,10 +787,11 @@ namespace LindeVNA
                 {
                     e.Cancel = true;
                     return;
-                 }
+                }
             }
 
-            _Timer.Stop();
+            if (_Timer != null)
+                _Timer.Stop();
             if (Globals.SgConnector != null && Globals.SgConnector.LoggedOn)
             {
                 if (HeliosVNA > 0)
@@ -1082,7 +1128,7 @@ namespace LindeVNA
             Brush odkudBrush = Brushes.Black;
             Brush kamBrush = Brushes.Black;
 
-            Visibility lblAktualniPoziceVisibility = Visibility.Hidden; 
+            Visibility lblAktualniPoziceVisibility = Visibility.Hidden;
             Visibility lblAktualniPoziceValVisibility = Visibility.Hidden;
             Visibility lblOdkudVisibility = Visibility.Hidden;
             Visibility lblOdkudValVisibility = Visibility.Hidden;
@@ -1187,7 +1233,7 @@ namespace LindeVNA
                 b.Foreground = Brushes.Green;
             else
                 b.Foreground = Brushes.LightGray;
-                
+
         }
 
         private void LblStavUkolu_MouseDoubleClick(object sender, MouseButtonEventArgs e)
@@ -1197,19 +1243,12 @@ namespace LindeVNA
 
         private void CbFullScreen_Checked(object sender, RoutedEventArgs e)
         {
-            Visibility = Visibility.Collapsed;
-            WindowStyle = WindowStyle.None;
-            ResizeMode = ResizeMode.NoResize;
-            WindowState = WindowState.Maximized;
-            Topmost = true;
-            Visibility = Visibility.Visible;
+            FullScreen = true;
         }
 
         private void CbFullScreen_Unchecked(object sender, RoutedEventArgs e)
         {
-            WindowStyle = WindowStyle.SingleBorderWindow;
-            ResizeMode = ResizeMode.CanResize;
-            Topmost = false;
+            FullScreen = false;
         }
 
         private void BtnUkoncit_Click(object sender, RoutedEventArgs e)
