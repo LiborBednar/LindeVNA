@@ -8,7 +8,7 @@
         WindowStartupLocation="CenterScreen"
         WindowStyle="SingleBorderWindow"
         Style="{StaticResource VNAStyle}"
-        Title="TerminalVNA" Height="620" Width="1024" Closing="TerminalWindow_Closing" SizeChanged="TerminalWindow_SizeChanged">
+        Title="TerminalVNA" Height="620" Width="1024" Closing="TerminalWindow_Closing">
     <DockPanel>
         <StatusBar DockPanel.Dock="Bottom">
             <StatusBar.ItemsPanel>
@@ -73,7 +73,7 @@
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="240"/>
                 <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="240"/>
+                <ColumnDefinition Width="260"/>
             </Grid.ColumnDefinitions>
             <StackPanel Orientation="Vertical" Margin="0" ContextMenuClosing="CbFullScreen_Checked" VerticalAlignment="Top">
                 <Label x:Name="lblHeliosVNA" Content="ID vozíku" HorizontalAlignment="Center" Margin="10,10,5,0" />
@@ -85,22 +85,22 @@
                 <Button x:Name="BtnConnect" Content="Připojit" Click="BtnConnect_Click" Margin="10,20,10,0" Padding="5" VerticalAlignment="Top" FontWeight="Bold"/>
                 <CheckBox x:Name="cbFullScreen" Content="FullScreen" Margin="10,20,10,0" HorizontalAlignment="Center" Unchecked="CbFullScreen_Unchecked" Checked="CbFullScreen_Checked"/>
             </StackPanel>
-            <Button x:Name="BtnUkoncit" Content="Ukončit" Click="BtnUkoncit_Click" Margin="10" Padding="10" VerticalAlignment="Bottom" FontWeight="Bold"/>
+            <Button x:Name="BtnUkoncit" Content="Ukončit" Click="BtnUkoncit_Click" Margin="10" Padding="10" VerticalAlignment="Bottom" FontWeight="Bold" FontSize="20"/>
             <DockPanel Grid.Column="2" >
                 <!--Button x:Name="btnClearTelegramy" Content="Smazat telegramy" DockPanel.Dock="Top" Click="BtnClearTelegramy_Click"/-->
                 <Border BorderThickness="1" BorderBrush="Black" >
-                        <TabControl>
-                            <TabItem Header="Telegramy">
+                    <TabControl>
+                        <TabItem Header="Úkoly">
+                            <ScrollViewer x:Name="UkolyScrollViewer">
+                                <TextBlock x:Name="tbUkoly" HorizontalAlignment="Stretch" Grid.Row="2" TextWrapping="Wrap" VerticalAlignment="Stretch" FontSize="16" Background="#7FFFFFFF" />
+                            </ScrollViewer>
+                        </TabItem>
+                        <TabItem Header="Telegramy">
                             <ScrollViewer x:Name="TelegramyScrollViewer">
                                 <TextBlock x:Name="tbTelegramy" HorizontalAlignment="Stretch" Grid.Row="2" TextWrapping="Wrap" VerticalAlignment="Stretch" FontSize="13" Background="#7FFFFFFF" />
                             </ScrollViewer>
                         </TabItem>
-                            <TabItem Header="Úkoly">
-                            <ScrollViewer x:Name="UkolyScrollViewer">
-                                <TextBlock x:Name="tbUkoly" HorizontalAlignment="Stretch" Grid.Row="2" TextWrapping="Wrap" VerticalAlignment="Stretch" FontSize="13" Background="#7FFFFFFF" />
-                            </ScrollViewer>
-                        </TabItem>
-                        </TabControl>
+                    </TabControl>
                 </Border>
             </DockPanel>
             <Grid Grid.Column="1">
@@ -119,20 +119,20 @@
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="*" />
                 </Grid.RowDefinitions>
-                <Label x:Name="lblStavUkolu" Content="Label" Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2" Margin="0" VerticalAlignment="Top" FontSize="24" HorizontalContentAlignment="Center" FontWeight="Bold" MouseDoubleClick="LblStavUkolu_MouseDoubleClick"/>
-                <Label x:Name="lblAktualniPozice" Content="Aktuální pozice" HorizontalAlignment="Right" Grid.Column="0" Grid.Row="1" VerticalAlignment="Center" Margin="0,0,5,0"/>
-                <Label x:Name="lblOdkud" Content="Odkud" HorizontalAlignment="Right" Grid.Column="0" Grid.Row="2" VerticalAlignment="Center" Margin="0,0,5,0"/>
-                <Label x:Name="lblKam" Content="Kam" HorizontalAlignment="Right" Grid.Column="0" Grid.Row="3" VerticalAlignment="Center" Margin="0,0,5,0"/>
-                <Label x:Name="lblBaleni" Content="Balení" HorizontalAlignment="Right" Grid.Column="0" Grid.Row="4" VerticalAlignment="Center" Margin="0,0,5,0"/>
-                <Label x:Name="lblPriorita" Content="Priorita" HorizontalAlignment="Right" Grid.Column="0" Grid.Row="5" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                <Label x:Name="lblStavUkolu" Content="Label" Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2" Margin="0" VerticalAlignment="Top" FontSize="30" HorizontalContentAlignment="Center" FontWeight="Bold" MouseDoubleClick="LblStavUkolu_MouseDoubleClick"/>
+                <Label x:Name="lblAktualniPozice" Content="Aktuální pozice" HorizontalAlignment="Right" Grid.Column="0" Grid.Row="1" VerticalAlignment="Center" Margin="0,0,5,0" FontSize="20"/>
+                <Label x:Name="lblOdkud" Content="Odkud" HorizontalAlignment="Right" Grid.Column="0" Grid.Row="2" VerticalAlignment="Center" Margin="0,0,5,0" FontSize="20"/>
+                <Label x:Name="lblKam" Content="Kam" HorizontalAlignment="Right" Grid.Column="0" Grid.Row="3" VerticalAlignment="Center" Margin="0,0,5,0" FontSize="20"/>
+                <Label x:Name="lblBaleni" Content="Balení" HorizontalAlignment="Right" Grid.Column="0" Grid.Row="4" VerticalAlignment="Center" Margin="0,0,5,0" FontSize="20"/>
+                <Label x:Name="lblPriorita" Content="Priorita" HorizontalAlignment="Right" Grid.Column="0" Grid.Row="5" VerticalAlignment="Center" Margin="0,0,5,0" FontSize="20"/>
 
-                <Label x:Name="lblAktualniPoziceVal" Content="Aktuální pozice" HorizontalAlignment="Left" Grid.Column="1" Grid.Row="1" VerticalAlignment="Center" Margin="0,0,5,0" FontWeight="Bold"/>
-                <Label x:Name="lblOdkudVal" Content="Odkud" HorizontalAlignment="Left" Grid.Column="2" Grid.Row="2" VerticalAlignment="Center" Margin="0,0,5,0" FontWeight="Bold"/>
-                <Label x:Name="lblKamVal" Content="Kam" HorizontalAlignment="Left" Grid.Column="3" Grid.Row="3" VerticalAlignment="Center" Margin="0,0,5,0" FontWeight="Bold"/>
-                <Label x:Name="lblBaleniVal" Content="Balení" HorizontalAlignment="Left" Grid.Column="4" Grid.Row="4" VerticalAlignment="Center" Margin="0,0,5,0" FontWeight="Bold"/>
-                <Label x:Name="lblPrioritaVal" Content="Priorita" HorizontalAlignment="Left" Grid.Column="5" Grid.Row="5" VerticalAlignment="Center" Margin="0,0,5,0" FontWeight="Bold"/>
+                <Label x:Name="lblAktualniPoziceVal" Content="Aktuální pozice" HorizontalAlignment="Left" Grid.Column="1" Grid.Row="1" VerticalAlignment="Center" Margin="0,0,5,0" FontWeight="Bold" FontSize="20"/>
+                <Label x:Name="lblOdkudVal" Content="Odkud" HorizontalAlignment="Left" Grid.Column="2" Grid.Row="2" VerticalAlignment="Center" Margin="0,0,5,0" FontWeight="Bold" FontSize="20"/>
+                <Label x:Name="lblKamVal" Content="Kam" HorizontalAlignment="Left" Grid.Column="3" Grid.Row="3" VerticalAlignment="Center" Margin="0,0,5,0" FontWeight="Bold" FontSize="20"/>
+                <Label x:Name="lblBaleniVal" Content="Balení" HorizontalAlignment="Left" Grid.Column="4" Grid.Row="4" VerticalAlignment="Center" Margin="0,0,5,0" FontWeight="Bold" FontSize="20"/>
+                <Label x:Name="lblPrioritaVal" Content="Priorita" HorizontalAlignment="Left" Grid.Column="5" Grid.Row="5" VerticalAlignment="Center" Margin="0,0,5,0" FontWeight="Bold" FontSize="20"/>
 
-                <Button x:Name="btnDefault" Content="Default"  Grid.Row="6" Grid.Column="0" Grid.ColumnSpan="2" Margin="24" Padding="20" FontSize="24" Click="BtnDefault_Click" FontWeight="Bold" Foreground="LightGray" Background="#FFE2FBE2" IsEnabled="False" IsEnabledChanged="BtnDefault_IsEnabledChanged"/>
+                <Button x:Name="btnDefault" Content="Default"  Grid.Row="6" Grid.Column="0" Grid.ColumnSpan="2" Margin="24" Padding="20" FontSize="30" Click="BtnDefault_Click" FontWeight="Bold" Foreground="LightGray" Background="#FFE2FBE2" IsEnabled="False" IsEnabledChanged="BtnDefault_IsEnabledChanged"/>
 
                 <Grid Grid.Column="0" Grid.Row="10" Grid.ColumnSpan="2" VerticalAlignment="Bottom" HorizontalAlignment="Center"  >
                     <Grid.ColumnDefinitions>
@@ -141,12 +141,14 @@
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
-                    <Button x:Name="btnVynechat" Content="VYNECHAT" Margin="10" Padding="10" Grid.Column="0" HorizontalAlignment="Stretch" FontWeight="Bold" Click="BtnVynechat_Click"/>
+                    <Button x:Name="btnVynechat" Content="VYNECHAT" Margin="10" Padding="10" Grid.Column="0" HorizontalAlignment="Stretch" FontWeight="Bold" Click="BtnVynechat_Click" FontSize="20"/>
                     <Button x:Name="btnNenalezeno" Content="NENALEZENO" Margin="10" Padding="10" Grid.Column="1" HorizontalAlignment="Stretch" FontWeight="Bold" Visibility="Collapsed"/>
                     <Button x:Name="btnObsazeno" Content="OBSAZENO" Margin="10" Padding="10" Grid.Column="2" HorizontalAlignment="Stretch" FontWeight="Bold" Visibility="Collapsed"/>
-                    <Button x:Name="btnZrusit" Content="ZRUŠIT" Margin="10" Padding="10" Grid.Column="3" HorizontalAlignment="Stretch" FontWeight="Bold" Click="BtnZrusit_Click"/>
-                    <Button x:Name="btnChyba" Content="CHYBA" Margin="10" Padding="10" Grid.Column="4" HorizontalAlignment="Stretch" FontWeight="Bold" Click="BtnChyba_Click" />
+                    <Button x:Name="btnZrusit" Content="ZRUŠIT" Margin="10" Padding="10" Grid.Column="3" HorizontalAlignment="Stretch" FontWeight="Bold" Click="BtnZrusit_Click" FontSize="20"/>
+                    <Button x:Name="btnPotvrdit" Content="POTVRDIT" Margin="10" Padding="10" Grid.Column="4" HorizontalAlignment="Stretch" FontWeight="Bold" Click="BtnPotvrdit_Click" FontSize="20"/>
+                    <Button x:Name="btnChyba" Content="CHYBA" Margin="10" Padding="10" Grid.Column="5" HorizontalAlignment="Stretch" FontWeight="Bold" FontSize="20" Click="BtnChyba_Click" />
                 </Grid>
             </Grid>
         </Grid>

@@ -185,7 +185,6 @@ namespace LindeVNA
             set
             {
                 _LastComPort = value;
-                //Srv.SetSettings("ComPort", _LastComPort);
                 Properties.Settings.Default.ComPort = _LastComPort;
                 Properties.Settings.Default.Save();
                 if (_SerialPort != null)
@@ -197,7 +196,6 @@ namespace LindeVNA
             }
             get
             {
-                //return Srv.GetSettings("ComPort");
                 return Properties.Settings.Default.ComPort;
             }
         }
@@ -208,7 +206,6 @@ namespace LindeVNA
             set
             {
                 _FullScreen = value;
-                //Srv.SetSettings("FullScreen", _FullScreen);
                 Properties.Settings.Default.FullScreen = _FullScreen;
                 Properties.Settings.Default.Save();
 
@@ -231,7 +228,6 @@ namespace LindeVNA
             }
             get
             {
-                //return Srv.GetSettings("FullScreen", false);
                 return Properties.Settings.Default.FullScreen;
             }
         }
@@ -242,16 +238,12 @@ namespace LindeVNA
             set
             {
                 _HeliosVNA = value;
-                //Srv.SetSettings("HeliosVNA", _HeliosVNA.ToString());
                 Properties.Settings.Default.HeliosVNA = _HeliosVNA;
                 Properties.Settings.Default.Save();
 
             }
             get
             {
-                //if (!_HeliosVNA.HasValue)
-                //    _HeliosVNA = Srv.GetSettings("HeliosVNA", 0);
-                //return _HeliosVNA.Value;
                 return Properties.Settings.Default.HeliosVNA;
             }
         }
@@ -262,12 +254,9 @@ namespace LindeVNA
             get
             {
                 _SynchroID = Properties.Settings.Default.SynchroID;
-                //if (ConfigurationManager.AppSettings.HasKeys() && ConfigurationManager.AppSettings.AllKeys.Contains<String>("SynchroID"))
-                //    _SynchroID = ConfigurationManager.AppSettings["SynchroID"].ToString();
 
                 if (String.IsNullOrEmpty(_SynchroID))
                     _SynchroID = DateTime.Now.ToString("yyMMdd") + "-" + Guid.NewGuid();
-                //Srv.SetSettings("SynchroID", _SynchroID);
                 Properties.Settings.Default.SynchroID = _SynchroID;
                 Properties.Settings.Default.Save();
                 return _SynchroID;
@@ -338,7 +327,9 @@ namespace LindeVNA
                     }
                     catch (Exception ex)
                     {
-                        //MessageBox.Show("Nepodařilo se zjistit spárování vozíku v Heliosu: " + ex.Message);
+                        Globals.Logger.Error("Chyba při aktualizaci pozice v Heliosu.");
+                        Globals.Logger.Error(ex);
+                        Globals.Logger.Trace(ex.ToString());
                     }
 
                 }
@@ -399,7 +390,15 @@ namespace LindeVNA
         private void _Timer_Tick(object sender, EventArgs e)
         {
             if (VybranyUkolVNA == 0)
-                _NactiUkol();
+                try
+                {
+                    _NactiUkol();
+                }
+                catch (Exception ex)
+                {
+                    Globals.Logger.Error(ex);
+                    Globals.Logger.Trace(ex.ToString());
+                }
         }
 
         private void _NactiUkol()
@@ -460,7 +459,6 @@ namespace LindeVNA
                 else
                 {
                     stavUkoluVna = table.Rows[0]["stav_ukolu_vna"].ToString();
-                    //string typOperaceVna = table.Rows[0]["typ_operace_vna"].ToString();
 
                     lblStavUkolu.Content = table.Rows[0]["typ_operace_vna_es"].ToString() + ": " + table.Rows[0]["stav_ukolu_vna_es"].ToString();
                     lblAktualniPoziceVal.Content = AktualniPozice;
@@ -584,7 +582,6 @@ namespace LindeVNA
 
         private void _ProcesData(string data)
         {
-            //Thread.Sleep(1500);
             _DataBuffer += data;
             int telegramStart = _DataBuffer.IndexOf("<");
             if (telegramStart < 0)
@@ -625,6 +622,8 @@ namespace LindeVNA
                         }
                         catch (Exception ex)
                         {
+                            Globals.Logger.Error(ex);
+                            Globals.Logger.Trace(ex.ToString());
                             MessageBox.Show(ex.Message);
                         }
                     }
@@ -769,9 +768,6 @@ namespace LindeVNA
 
             if (!String.IsNullOrEmpty(currentArea))
             {
-
-                //currentLevel = (Convert.ToUInt32(currentLevel) - 1).ToString("00");
-
                 string s = currentRow + "-" + currentLevel + "-" + currentLocation;
                 CurrentPosition = currentArea + " " + s;
                 if (Regex.Match(s, @"^([0-9][0-9])-[0-9][0-9]-[0-9][0-9]$").Success)
@@ -795,34 +791,33 @@ namespace LindeVNA
             if (Globals.SgConnector != null && Globals.SgConnector.LoggedOn)
             {
                 if (HeliosVNA > 0)
+                {
+                    InputTable inputTable = new InputTable("InputParams");
+                    inputTable.AddColumn("command_key", typeof(string));
+                    inputTable.AddColumn("vozik", typeof(int));
+                    int row = inputTable.AddRow();
+                    inputTable.SetItem(0, "command_key", "odhlaseni_voziku");
+                    inputTable.SetItem(0, "vozik", HeliosVNA);
                     try
                     {
-                        InputTable inputTable = new InputTable("InputParams");
-                        inputTable.AddColumn("command_key", typeof(string));
-                        inputTable.AddColumn("vozik", typeof(int));
-                        int row = inputTable.AddRow();
-                        inputTable.SetItem(0, "command_key", "odhlaseni_voziku");
-                        inputTable.SetItem(0, "vozik", HeliosVNA);
-                        try
-                        {
-                            RunFunctionResponse response = _VnaClientRequest(inputTable);
-                        }
-                        catch (Exception ex)
-                        {
-                            //MessageBox.Show("Nepodařilo se zjistit spárování vozíku v Heliosu: " + ex.Message);
-                        }
-
+                        RunFunctionResponse response = _VnaClientRequest(inputTable);
                     }
-                    catch
+                    catch (Exception ex)
                     {
-
+                        Globals.Logger.Error("Chyba při odhlášení vozíku.");
+                        Globals.Logger.Error(ex);
+                        Globals.Logger.Trace(ex.ToString());
                     }
-
+                }
                 try
                 {
                     Globals.SgConnector.LogOff();
                 }
                 catch { }
+                finally
+                {
+                    Globals.Logger.Info("Program ended");
+                }
             }
 
             try
@@ -832,6 +827,8 @@ namespace LindeVNA
             }
             catch (Exception ex)
             {
+                Globals.Logger.Error(ex);
+                Globals.Logger.Trace(ex.ToString());
                 MessageBox.Show(ex.Message.ToString());
             }
 
@@ -862,6 +859,8 @@ namespace LindeVNA
             }
             catch (Exception ex)
             {
+                Globals.Logger.Error(ex);
+                Globals.Logger.Trace(ex.ToString());
                 MessageBox.Show(ex.Message);
             }
             finally
@@ -952,11 +951,6 @@ namespace LindeVNA
             TelegramyScrollViewer.ScrollToEnd();
         }
 
-        //private void BtnClearOutputBox_Click(object sender, RoutedEventArgs e)
-        //{
-        //    OutputTextBox.Clear();
-        //}
-
         private void BtnClearTelegramy_Click(object sender, RoutedEventArgs e)
         {
             tbTelegramy.Text = "";
@@ -1012,6 +1006,9 @@ namespace LindeVNA
             }
             catch (Exception ex)
             {
+                Globals.Logger.Error("Chyba spárování vozíku v Heliosu.");
+                Globals.Logger.Error(ex);
+                Globals.Logger.Trace(ex.ToString());
                 MessageBox.Show("Chyba spárování vozíku v Heliosu: " + ex.Message);
                 HeliosVNA = 0;
                 NactiVozikyProParovani();
@@ -1043,6 +1040,9 @@ namespace LindeVNA
             }
             catch (Exception ex)
             {
+                Globals.Logger.Error("Nepodařilo se zjistit seznam nespárovaných zařízení v Heliosu.");
+                Globals.Logger.Error(ex);
+                Globals.Logger.Trace(ex.ToString());
                 MessageBox.Show("Nepodařilo se zjistit seznam nespárovaných zařízení v Heliosu:" + ex.Message);
             }
         }
@@ -1082,44 +1082,10 @@ namespace LindeVNA
                 oblast = m.Groups["oblast"].Value;
                 rada = m.Groups["rada"].Value;
                 uroven = m.Groups["uroven"].Value;
-                //uroven = (Convert.ToInt32( m.Groups["uroven"].Value) + 1).ToString("00");
                 regal = m.Groups["regal"].Value;
             }
             else
                 throw new ApplicationException("Nepodporovaná regálová pozice.");
-        }
-
-        private void BtnDefault_Click(object sender, RoutedEventArgs e)
-        {
-            if (_HandShakeS())
-            {
-                InputTable inputTable = new InputTable("InputParams");
-                inputTable.AddColumn("command_key", typeof(string));
-                inputTable.AddColumn("vozik", typeof(int));
-                inputTable.AddColumn("novy_ukol_vna", typeof(int));
-                inputTable.AddColumn("vybrany_ukol_vna", typeof(int));
-                int row = inputTable.AddRow();
-                inputTable.SetItem(0, "command_key", "default_click");
-                inputTable.SetItem(0, "vozik", HeliosVNA);
-                inputTable.SetItem(0, "novy_ukol_vna", NovyUkolVNA);
-                inputTable.SetItem(0, "vybrany_ukol_vna", VybranyUkolVNA);
-                try
-                {
-                    _Timer.Stop();
-                    RunFunctionResponse response = _VnaClientRequest(inputTable);
-                    _NactiUkol();
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show(ex.Message);
-                }
-                finally
-                {
-                    _Timer.Start();
-                }
-            }
-            else
-                MessageBox.Show(Status);
         }
 
         private void _PrekresliUkol()
@@ -1144,6 +1110,7 @@ namespace LindeVNA
             Visibility btnNenalezenoVisibility = Visibility.Collapsed;
             Visibility btnVynechatVisibility = Visibility.Collapsed;
             Visibility btnZrusitVisibility = Visibility.Collapsed;
+            Visibility btnPotvrditVisibility = Visibility.Collapsed;
             Visibility btnObsazenoVisibility = Visibility.Collapsed;
 
             if (!String.IsNullOrEmpty(StavUkoluVNA))
@@ -1163,6 +1130,9 @@ namespace LindeVNA
                 btnChybaVisibility = Visibility.Visible;
             }
 
+            lblOdkud.FontWeight = FontWeights.Normal;
+            lblKam.FontWeight = FontWeights.Normal;
+
             switch (StavUkoluVNA)
             {
                 case "P": //Plán
@@ -1174,10 +1144,12 @@ namespace LindeVNA
                 case "N": // Nakládání
                     //btnNenalezenoVisibility = Visibility.Visible;
                     btnZrusitVisibility = Visibility.Visible;
+                    lblOdkud.FontWeight = FontWeights.Bold;
                     if (lblAktualniPoziceVal.Content.ToString() == lblOdkudVal.Content.ToString())
                     {
                         aktualniPoziceBrush = Brushes.Green;
                         odkudBrush = Brushes.Green;
+                        btnPotvrditVisibility = Visibility.Visible;
                     }
                     else
                     {
@@ -1186,11 +1158,13 @@ namespace LindeVNA
                     }
                     break;
                 case "V": // Vykládání
-                    //btnObsazenoVisibility = Visibility.Visible;
+                          //btnObsazenoVisibility = Visibility.Visible;
+                    lblKam.FontWeight = FontWeights.Bold;
                     if (lblAktualniPoziceVal.Content.ToString() == lblKamVal.Content.ToString())
                     {
                         aktualniPoziceBrush = Brushes.Green;
                         kamBrush = Brushes.Green;
+                        btnPotvrditVisibility = Visibility.Visible;
                     }
                     else
                     {
@@ -1224,6 +1198,27 @@ namespace LindeVNA
             btnVynechat.Visibility = btnVynechatVisibility;
             btnZrusit.Visibility = btnZrusitVisibility;
             btnObsazeno.Visibility = btnObsazenoVisibility;
+            btnPotvrdit.Visibility = btnPotvrditVisibility;
+        }
+
+        private void LblStavUkolu_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+        {
+            try
+            {
+                _Timer.Stop();
+                _NactiUkol();
+            }
+            catch (Exception ex)
+            {
+                Globals.Logger.Error(ex);
+                Globals.Logger.Trace(ex.ToString());
+                MessageBox.Show(ex.Message);
+            }
+            finally
+            {
+                _Timer.Start();
+            }
+
         }
 
         private void BtnDefault_IsEnabledChanged(object sender, DependencyPropertyChangedEventArgs e)
@@ -1233,12 +1228,6 @@ namespace LindeVNA
                 b.Foreground = Brushes.Green;
             else
                 b.Foreground = Brushes.LightGray;
-
-        }
-
-        private void LblStavUkolu_MouseDoubleClick(object sender, MouseButtonEventArgs e)
-        {
-            _NactiUkol();
         }
 
         private void CbFullScreen_Checked(object sender, RoutedEventArgs e)
@@ -1251,14 +1240,44 @@ namespace LindeVNA
             FullScreen = false;
         }
 
+        private void BtnDefault_Click(object sender, RoutedEventArgs e)
+        {
+            if (_HandShakeS())
+            {
+                InputTable inputTable = new InputTable("InputParams");
+                inputTable.AddColumn("command_key", typeof(string));
+                inputTable.AddColumn("vozik", typeof(int));
+                inputTable.AddColumn("novy_ukol_vna", typeof(int));
+                inputTable.AddColumn("vybrany_ukol_vna", typeof(int));
+                int row = inputTable.AddRow();
+                inputTable.SetItem(0, "command_key", "default_click");
+                inputTable.SetItem(0, "vozik", HeliosVNA);
+                inputTable.SetItem(0, "novy_ukol_vna", NovyUkolVNA);
+                inputTable.SetItem(0, "vybrany_ukol_vna", VybranyUkolVNA);
+                try
+                {
+                    _Timer.Stop();
+                    RunFunctionResponse response = _VnaClientRequest(inputTable);
+                    _NactiUkol();
+                }
+                catch (Exception ex)
+                {
+                    Globals.Logger.Error(ex);
+                    Globals.Logger.Trace(ex.ToString());
+                    MessageBox.Show(ex.Message);
+                }
+                finally
+                {
+                    _Timer.Start();
+                }
+            }
+            else
+                MessageBox.Show(Status);
+        }
+
         private void BtnUkoncit_Click(object sender, RoutedEventArgs e)
         {
             Close();
-        }
-
-        private void TerminalWindow_SizeChanged(object sender, SizeChangedEventArgs e)
-        {
-
         }
 
         private void BtnChyba_Click(object sender, RoutedEventArgs e)
@@ -1282,6 +1301,8 @@ namespace LindeVNA
                 }
                 catch (Exception ex)
                 {
+                    Globals.Logger.Error(ex);
+                    Globals.Logger.Trace(ex.ToString());
                     MessageBox.Show(ex.Message);
                 }
                 finally
@@ -1312,6 +1333,8 @@ namespace LindeVNA
                 }
                 catch (Exception ex)
                 {
+                    Globals.Logger.Error(ex);
+                    Globals.Logger.Trace(ex.ToString());
                     MessageBox.Show(ex.Message);
                 }
                 finally
@@ -1342,12 +1365,23 @@ namespace LindeVNA
                 }
                 catch (Exception ex)
                 {
+                    Globals.Logger.Error(ex);
+                    Globals.Logger.Trace(ex.ToString());
                     MessageBox.Show(ex.Message);
                 }
                 finally
                 {
                     _Timer.Start();
                 }
+            }
+        }
+
+        private void BtnPotvrdit_Click(object sender, RoutedEventArgs e)
+        {
+            MessageBoxResult result = MessageBox.Show("Opravdu chcete potvrdit aktuální úkol?", "Dotaz", MessageBoxButton.YesNo);
+            if (result == MessageBoxResult.Yes)
+            {
+                BtnDefault_Click(sender, e);
             }
         }
     }
