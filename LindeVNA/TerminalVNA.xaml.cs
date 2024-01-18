@@ -342,11 +342,14 @@ namespace LindeVNA
             }
         }
 
+        DataTable _SeznamUkolu = null;
+
         public int VybranyUkolVNA { get; set; } = 0;
 
         public int NovyUkolVNA { get; set; } = 0;
 
         public string StavUkoluVNA { get; set; } = "";
+        public string TypOperaceVNA { get; set; } = "";
 
         private void _ResetStatus()
         {
@@ -392,7 +395,7 @@ namespace LindeVNA
             if (VybranyUkolVNA == 0)
                 try
                 {
-                    _NactiUkol();
+                    _NactiUkol(true);
                 }
                 catch (Exception ex)
                 {
@@ -401,9 +404,10 @@ namespace LindeVNA
                 }
         }
 
-        private void _NactiUkol()
+        private void _NactiUkol(bool online)
         {
             string stavUkoluVna = "";
+            string typOperaceVna = "";
             VybranyUkolVNA = 0;
             NovyUkolVNA = 0;
 
@@ -432,40 +436,50 @@ namespace LindeVNA
             }
             else
             {
-                DataTable table = null;
-                try
+                if (online)
                 {
-                    BrowseRequest request = new BrowseRequest(22567, new BrowseId(BrowseType.Template, 22645));
-                    request.Bounds.LowerBound = 1;
-                    request.Bounds.UpperBound = 10;
-                    request.BaseFilterArguments = new FilterArgumentList();
-                    request.BaseFilterArguments.Add("aktualni_pozice", AktualniPozice.Substring(2));
-                    request.BaseFilterArguments.Add("vna_vozik", HeliosVNA);
-                    BrowseResponse response = request.Process(Globals.SgConnector);
-                    table = response.Data.MainTable;
-                }
-                catch { }
+                    Mouse.OverrideCursor = Cursors.Wait;
+                    try
+                    {
+                        BrowseRequest request = new BrowseRequest(22567, new BrowseId(BrowseType.Template, 22645));
+                        request.Bounds.LowerBound = 1;
+                        request.Bounds.UpperBound = 10;
+                        request.BaseFilterArguments = new FilterArgumentList();
+                        request.BaseFilterArguments.Add("aktualni_pozice", AktualniPozice.Substring(2));
+                        request.BaseFilterArguments.Add("vna_vozik", HeliosVNA);
+                        BrowseResponse response = request.Process(Globals.SgConnector);
+                        _SeznamUkolu = response.Data.MainTable;
+                    }
+                    catch { }
+                    finally
+                    {
+                        Mouse.OverrideCursor = null;
+                    }
 
-                if (table == null)
-                {
-                    lblStavUkolu.Content = "Nepodařilo se načíst úkol";
-                    lblStavUkolu.Foreground = Brushes.Red;
+                    if (_SeznamUkolu == null)
+                    {
+                        lblStavUkolu.Content = "Nepodařilo se načíst úkol";
+                        lblStavUkolu.Foreground = Brushes.Red;
+                    }
                 }
-                else if (table.Rows.Count == 0)
+
+                if (_SeznamUkolu.Rows.Count == 0)
                 {
                     lblStavUkolu.Content = "Seznam úkolů je prázdný";
                     lblStavUkolu.Foreground = Brushes.Red;
                 }
                 else
                 {
-                    stavUkoluVna = table.Rows[0]["stav_ukolu_vna"].ToString();
+                    stavUkoluVna = _SeznamUkolu.Rows[0]["stav_ukolu_vna"].ToString();
+                    typOperaceVna = _SeznamUkolu.Rows[0]["typ_operace_vna"].ToString();
 
-                    lblStavUkolu.Content = table.Rows[0]["typ_operace_vna_es"].ToString() + ": " + table.Rows[0]["stav_ukolu_vna_es"].ToString();
+                    lblStavUkolu.Content = _SeznamUkolu.Rows[0]["typ_operace_vna_es"].ToString() + ": " + _SeznamUkolu.Rows[0]["stav_ukolu_vna_es"].ToString();
                     lblAktualniPoziceVal.Content = AktualniPozice;
-                    lblOdkudVal.Content = table.Rows[0]["odkud"].ToString();
-                    lblKamVal.Content = table.Rows[0]["kam"].ToString();
-                    lblBaleniVal.Content = table.Rows[0]["sarze_refer"].ToString();
-                    lblPrioritaVal.Content = table.Rows[0]["priorita"].ToString();
+                    lblOdkudVal.Content = _SeznamUkolu.Rows[0]["odkud"].ToString();
+                    lblKamVal.Content = _SeznamUkolu.Rows[0]["kam"].ToString();
+                    //                    lblBaleniVal.Content = _SeznamUkolu.Rows[0]["sarze_refer"].ToString();
+                    txtBaleniVal.Text = _SeznamUkolu.Rows[0]["sarze_refer"].ToString();
+                    lblPrioritaVal.Content = _SeznamUkolu.Rows[0]["priorita"].ToString();
                     lblStavUkolu.Foreground = Brushes.Green;
 
                     lblAktualniPoziceVal.Foreground = Brushes.Black;
@@ -473,9 +487,9 @@ namespace LindeVNA
                     lblKamVal.Foreground = Brushes.Black;
 
                     if (stavUkoluVna == "P")
-                        NovyUkolVNA = (Int32)table.Rows[0]["vna_ukol"];
+                        NovyUkolVNA = (Int32)_SeznamUkolu.Rows[0]["vna_ukol"];
                     else
-                        VybranyUkolVNA = (Int32)table.Rows[0]["vna_ukol"];
+                        VybranyUkolVNA = (Int32)_SeznamUkolu.Rows[0]["vna_ukol"];
 
                     switch (stavUkoluVna)
                     {
@@ -509,11 +523,11 @@ namespace LindeVNA
                             }
                         case "K": // Kontrola
                             {
-                                string kam = lblKamVal.Content.ToString();
-                                _ParsePozice(kam, out string oblast, out string rada, out string uroven, out string regal);
-                                SendTelegram("F", "B", $"{ oblast};{rada};*;{regal};{uroven};0");
+                                string odkud = lblOdkudVal.Content.ToString();
+                                _ParsePozice(odkud, out string oblast, out string rada, out string uroven, out string regal);
+                                SendTelegram("F", "K", $"{ oblast};{rada};*;{regal};{uroven};0");
                                 SendTelegram("C", "S", "");
-                                btnDefault.Content = "VYLOŽENO";
+                                btnDefault.Content = "POTVRDIT";
                                 btnDefault.IsEnabled = false;
                                 break;
                             }
@@ -524,30 +538,31 @@ namespace LindeVNA
                 }
 
                 tbUkoly.Inlines.Clear();
-                for (int i = 0; i < table.Rows.Count; i++)
+                for (int i = 0; i < _SeznamUkolu.Rows.Count; i++)
                 {
                     Brush foreground = Brushes.DarkViolet;
                     FontStyle fontStyle = FontStyles.Normal;
                     FontWeight fontWeight = FontWeights.Normal;
 
-                    if (table.Rows[i]["typ_operace_vna"].ToString() == "V")
+                    if (_SeznamUkolu.Rows[i]["typ_operace_vna"].ToString() == "V")
                         foreground = Brushes.DarkBlue;
-                    if (table.Rows[i]["vynechano"].ToString() != "0")
+                    if (_SeznamUkolu.Rows[i]["vynechano"].ToString() != "0")
                         fontStyle = FontStyles.Italic;
-                    if (VybranyUkolVNA == (Int32)table.Rows[i]["vna_ukol"])
+                    if (VybranyUkolVNA == (Int32)_SeznamUkolu.Rows[i]["vna_ukol"])
                         fontWeight = FontWeights.Bold;
 
-                    Run header = new Run((i + 1).ToString() + ": " + table.Rows[i]["typ_operace_vna_es"].ToString() + ": " + table.Rows[i]["stav_ukolu_vna_es"].ToString() + "\r\n");
+                    Run header = new Run((i + 1).ToString() + ": " + _SeznamUkolu.Rows[i]["typ_operace_vna_es"].ToString() + ": " + _SeznamUkolu.Rows[i]["stav_ukolu_vna_es"].ToString() + "\r\n");
                     header.Foreground = foreground;
                     header.FontStyle = fontStyle;
                     header.FontWeight = fontWeight;
 
                     tbUkoly.Inlines.Add(header);
-                    tbUkoly.Inlines.Add(new Run(table.Rows[i]["odkud"].ToString() + " ---> " + table.Rows[i]["kam"].ToString() + "\r\n\r\n") { });
+                    tbUkoly.Inlines.Add(new Run(_SeznamUkolu.Rows[i]["odkud"].ToString() + " ---> " + _SeznamUkolu.Rows[i]["kam"].ToString() + "\r\n\r\n") { });
                 }
                 UkolyScrollViewer.ScrollToHome();
             }
             StavUkoluVNA = stavUkoluVna;
+            TypOperaceVNA = typOperaceVna;
             _PrekresliUkol();
         }
 
@@ -1119,8 +1134,24 @@ namespace LindeVNA
                 lblAktualniPoziceValVisibility = Visibility.Visible;
                 lblOdkudVisibility = Visibility.Visible;
                 lblOdkudValVisibility = Visibility.Visible;
-                lblKamVisibility = Visibility.Visible;
-                lblOdKamValVisibility = Visibility.Visible;
+                if (TypOperaceVNA == "I")
+                {
+                    lblOdkud.Content = "Inv. pozice";
+                    lblKamVisibility = Visibility.Collapsed;
+                    lblOdKamValVisibility = Visibility.Collapsed;
+                    txtBaleniVal.Background = Brushes.White;
+                    txtBaleniVal.BorderThickness = new Thickness(2);
+                    txtBaleniVal.IsReadOnly = false;
+                }
+                else
+                {
+                    lblOdkud.Content = "Odkud";
+                    lblKamVisibility = Visibility.Visible;
+                    lblOdKamValVisibility = Visibility.Visible;
+                    txtBaleniVal.Background = Brushes.Transparent;
+                    txtBaleniVal.BorderThickness = new Thickness(0);
+                    txtBaleniVal.IsReadOnly = true;
+                }
                 lblPrioritaVisibility = Visibility.Visible;
                 lblPrioritaValVisibility = Visibility.Visible;
                 lblBaleniVisibility = Visibility.Visible;
@@ -1138,11 +1169,21 @@ namespace LindeVNA
                 case "P": //Plán
                     btnVynechatVisibility = Visibility.Visible;
                     btnChybaVisibility = Visibility.Collapsed;
+                    if (TypOperaceVNA == "I")
+                    {
+                        lblBaleniVisibility = Visibility.Collapsed;
+                        lblBaleniValVisibility = Visibility.Collapsed;
+                    }
+                    else
+                    {
+                        lblBaleniVisibility = Visibility.Visible;
+                        lblBaleniValVisibility = Visibility.Visible;
+                    }
                     break;
                 case "Z": // Zahájeno
                     break;
                 case "N": // Nakládání
-                    //btnNenalezenoVisibility = Visibility.Visible;
+                case "K": // Kontrola
                     btnZrusitVisibility = Visibility.Visible;
                     lblOdkud.FontWeight = FontWeights.Bold;
                     if (lblAktualniPoziceVal.Content.ToString() == lblOdkudVal.Content.ToString())
@@ -1150,15 +1191,16 @@ namespace LindeVNA
                         aktualniPoziceBrush = Brushes.Green;
                         odkudBrush = Brushes.Green;
                         btnPotvrditVisibility = Visibility.Visible;
+                        txtBaleniVal.IsEnabled = true;
                     }
                     else
                     {
                         aktualniPoziceBrush = Brushes.Red;
                         odkudBrush = Brushes.Red;
+                        txtBaleniVal.IsEnabled = false;
                     }
                     break;
                 case "V": // Vykládání
-                          //btnObsazenoVisibility = Visibility.Visible;
                     lblKam.FontWeight = FontWeights.Bold;
                     if (lblAktualniPoziceVal.Content.ToString() == lblKamVal.Content.ToString())
                     {
@@ -1171,9 +1213,6 @@ namespace LindeVNA
                         aktualniPoziceBrush = Brushes.Red;
                         kamBrush = Brushes.Red;
                     }
-                    break;
-                case "K": // Kontrola
-                    //btnNenalezenoVisibility = Visibility.Visible;
                     break;
             }
 
@@ -1190,7 +1229,7 @@ namespace LindeVNA
             lblPriorita.Visibility = lblPrioritaVisibility;
             lblPrioritaVal.Visibility = lblPrioritaValVisibility;
             lblBaleni.Visibility = lblBaleniVisibility;
-            lblBaleniVal.Visibility = lblBaleniValVisibility;
+            txtBaleniVal.Visibility = lblBaleniValVisibility;
 
             btnDefault.Visibility = btnDefaultVisibility;
             btnChyba.Visibility = btnChybaVisibility;
@@ -1199,6 +1238,8 @@ namespace LindeVNA
             btnZrusit.Visibility = btnZrusitVisibility;
             btnObsazeno.Visibility = btnObsazenoVisibility;
             btnPotvrdit.Visibility = btnPotvrditVisibility;
+
+            txtBaleniVal.Focus();
         }
 
         private void LblStavUkolu_MouseDoubleClick(object sender, MouseButtonEventArgs e)
@@ -1206,7 +1247,7 @@ namespace LindeVNA
             try
             {
                 _Timer.Stop();
-                _NactiUkol();
+                _NactiUkol(true);
             }
             catch (Exception ex)
             {
@@ -1249,16 +1290,18 @@ namespace LindeVNA
                 inputTable.AddColumn("vozik", typeof(int));
                 inputTable.AddColumn("novy_ukol_vna", typeof(int));
                 inputTable.AddColumn("vybrany_ukol_vna", typeof(int));
+                inputTable.AddColumn("sarze_nalez", typeof(string));
                 int row = inputTable.AddRow();
                 inputTable.SetItem(0, "command_key", "default_click");
                 inputTable.SetItem(0, "vozik", HeliosVNA);
                 inputTable.SetItem(0, "novy_ukol_vna", NovyUkolVNA);
                 inputTable.SetItem(0, "vybrany_ukol_vna", VybranyUkolVNA);
+                inputTable.SetItem(0, "sarze_nalez", txtBaleniVal.Text);
                 try
                 {
                     _Timer.Stop();
                     RunFunctionResponse response = _VnaClientRequest(inputTable);
-                    _NactiUkol();
+                    _NactiUkol(true);
                 }
                 catch (Exception ex)
                 {
@@ -1297,7 +1340,7 @@ namespace LindeVNA
                 {
                     _Timer.Stop();
                     RunFunctionResponse response = _VnaClientRequest(inputTable);
-                    _NactiUkol();
+                    _NactiUkol(true);
                 }
                 catch (Exception ex)
                 {
@@ -1329,7 +1372,7 @@ namespace LindeVNA
                 {
                     _Timer.Stop();
                     RunFunctionResponse response = _VnaClientRequest(inputTable);
-                    _NactiUkol();
+                    _NactiUkol(true);
                 }
                 catch (Exception ex)
                 {
@@ -1361,7 +1404,7 @@ namespace LindeVNA
                 {
                     _Timer.Stop();
                     RunFunctionResponse response = _VnaClientRequest(inputTable);
-                    _NactiUkol();
+                    _NactiUkol(true);
                 }
                 catch (Exception ex)
                 {
@@ -1382,6 +1425,15 @@ namespace LindeVNA
             if (result == MessageBoxResult.Yes)
             {
                 BtnDefault_Click(sender, e);
+            }
+        }
+
+        private void TxtBaleniVal_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Return)
+            {
+                if (!String.IsNullOrEmpty(txtBaleniVal.Text) && btnDefault.IsEnabled)
+                    BtnDefault_Click(sender, e);
             }
         }
     }
