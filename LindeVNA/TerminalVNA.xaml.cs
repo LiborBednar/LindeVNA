@@ -477,8 +477,7 @@ namespace LindeVNA
                     lblAktualniPoziceVal.Content = AktualniPozice;
                     lblOdkudVal.Content = _SeznamUkolu.Rows[0]["odkud"].ToString();
                     lblKamVal.Content = _SeznamUkolu.Rows[0]["kam"].ToString();
-                    //                    lblBaleniVal.Content = _SeznamUkolu.Rows[0]["sarze_refer"].ToString();
-                    txtBaleniVal.Text = _SeznamUkolu.Rows[0]["sarze_refer"].ToString();
+                    txtBaleniVal.Text = _SeznamUkolu.Rows[0]["id_baleni"].ToString();
                     lblPrioritaVal.Content = _SeznamUkolu.Rows[0]["priorita"].ToString();
                     lblStavUkolu.Foreground = Brushes.Green;
 
