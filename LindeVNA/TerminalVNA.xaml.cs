@@ -1296,7 +1296,7 @@ namespace LindeVNA
                 inputTable.SetItem(0, "vozik", HeliosVNA);
                 inputTable.SetItem(0, "novy_ukol_vna", NovyUkolVNA);
                 inputTable.SetItem(0, "vybrany_ukol_vna", VybranyUkolVNA);
-                inputTable.SetItem(0, "txtBaleniVal", txtBaleniVal.Text);
+                inputTable.SetItem(0, "sarze_nalez", txtBaleniVal.Text);
                 try
                 {
                     _Timer.Stop();
