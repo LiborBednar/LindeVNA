@@ -914,6 +914,7 @@ namespace LindeVNA
             bool ret = false;
             try
             {
+                Status = null;
                 SendTelegram("C", "S", "");
                 ret = true;
             }
@@ -945,7 +946,7 @@ namespace LindeVNA
             if (!String.IsNullOrWhiteSpace(parametry))
                 telegram += ";" + parametry;
             telegram = "<" + (telegram.Length + 4).ToString("00") + telegram + ">";
-            if (_SerialPort.IsOpen)
+            if (_SerialPort != null && _SerialPort.IsOpen)
             {
                 _SerialPort.Write(telegram);
                 switch (typ)
@@ -1295,7 +1296,7 @@ namespace LindeVNA
                 inputTable.SetItem(0, "vozik", HeliosVNA);
                 inputTable.SetItem(0, "novy_ukol_vna", NovyUkolVNA);
                 inputTable.SetItem(0, "vybrany_ukol_vna", VybranyUkolVNA);
-                inputTable.SetItem(0, "sarze_nalez", txtBaleniVal.Text);
+                inputTable.SetItem(0, "txtBaleniVal", txtBaleniVal.Text);
                 try
                 {
                     _Timer.Stop();
